@@ -84,7 +84,7 @@ def seed_due_item(database_path: Path, user_id: int) -> None:
 
 
 def test_all_required_pages_are_registered() -> None:
-    assert tuple(PAGE_RENDERERS) == ("Home", "Learn", "Translate", "Progress", "Profile")
+    assert tuple(PAGE_RENDERERS) == ("Home", "Learn", "Presentation", "Translate", "Progress", "Profile")
 
 
 def test_app_starts_without_model_configuration(monkeypatch, tmp_path: Path) -> None:

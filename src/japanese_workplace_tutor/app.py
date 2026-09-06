@@ -18,6 +18,7 @@ from .generation import (
     OpenAICompatibleTransport,
     Recovery,
     ScenarioMode,
+    SlideInput,
     detect_scenario_mode,
     evaluate_graduation,
 )
@@ -890,6 +891,142 @@ def render_learn(
         st.rerun()
 
 
+PRESENTATION_SLIDE_CAP = 6
+
+
+def _parse_pptx_slides(uploaded_file) -> list[SlideInput]:
+    """Read title + body text from an uploaded .pptx. Returns [] if unreadable."""
+
+    try:
+        from pptx import Presentation
+    except ImportError:
+        return []
+    try:
+        presentation = Presentation(uploaded_file)
+    except Exception:
+        return []
+    slides: list[SlideInput] = []
+    for slide in presentation.slides:
+        title = ""
+        try:
+            if slide.shapes.title is not None and slide.shapes.title.text.strip():
+                title = slide.shapes.title.text.strip()
+        except (AttributeError, ValueError):
+            title = ""
+        body_parts: list[str] = []
+        for shape in slide.shapes:
+            if not getattr(shape, "has_text_frame", False):
+                continue
+            text = shape.text_frame.text.strip()
+            if not text or text == title:
+                continue
+            body_parts.append(text)
+        if not title and body_parts:
+            title = body_parts.pop(0)
+        if title or body_parts:
+            slides.append(SlideInput(title or "(untitled)", "\n".join(body_parts)))
+    return slides
+
+
+def _parse_pasted_deck(text: str) -> list[SlideInput]:
+    """Split pasted text into slides on '---'; first line is the title."""
+
+    slides: list[SlideInput] = []
+    for block in text.split("---"):
+        lines = [line for line in block.splitlines() if line.strip()]
+        if not lines:
+            continue
+        slides.append(SlideInput(lines[0].strip(), "\n".join(lines[1:]).strip()))
+    return slides
+
+
+def _render_localized_deck(deck, slide_inputs: list[SlideInput]) -> None:
+    st.caption(f"Localized with {deck.provider_name}")
+    st.subheader("Flow review")
+    st.write(deck.flow_review.assessment)
+    st.markdown("**Recommended running order:**")
+    for suggestion in deck.flow_review.recommended_order:
+        st.markdown(
+            f"{suggestion.position}. **{suggestion.slide_title}** — {suggestion.rationale}"
+        )
+    st.divider()
+    st.subheader("Slides (copy the Japanese into your deck)")
+    for index, localization in enumerate(deck.slides):
+        source = slide_inputs[index].title if index < len(slide_inputs) else f"Slide {index + 1}"
+        with st.expander(f"Slide {index + 1}: {source}", expanded=index == 0):
+            st.markdown("**Japanese title**")
+            st.code(localization.japanese_title, language=None)
+            st.markdown("**Japanese body**")
+            st.code(localization.japanese_body, language=None)
+            st.markdown("**Speaker notes (how to deliver it)**")
+            st.write(localization.speaker_notes)
+            st.markdown("**What changed vs a literal translation, and why**")
+            st.write(localization.nuance_notes)
+
+
+def render_presentation(
+    generation_service: LessonGenerationService | None = None,
+    profile: ProfileRecord | None = None,
+) -> None:
+    st.title("Presentation")
+    st.caption(
+        "Turn an English deck into natural Japanese to paste: right register for your audience, "
+        "human phrasing, a flow check, and delivery notes."
+    )
+    if generation_service is None:
+        st.info("Presentation localization needs model configuration.")
+        return
+
+    audience = st.selectbox(
+        "Audience", ("client", "manager", "peer", "subordinate", "executive"), index=0
+    )
+    formality_col, purpose_col = st.columns(2)
+    formality = formality_col.selectbox(
+        "Formality", ("formal", "standard business", "casual business"), index=1
+    )
+    purpose = purpose_col.text_input("Occasion / purpose", value="internal report")
+
+    st.markdown("**Your deck**")
+    uploaded = st.file_uploader("Upload a .pptx", type=["pptx"])
+    pasted = st.text_area(
+        "…or paste slides (separate each slide with a line containing only ---)",
+        height=200,
+        placeholder="Q3 Results\nRevenue grew 12%\nAPAC drove growth\n---\nNext Steps\nExpand to two new markets",
+    )
+
+    if st.button("Localize to Japanese", type="primary", key="localize_deck"):
+        slides: list[SlideInput] = []
+        note: str | None = None
+        if uploaded is not None:
+            slides = _parse_pptx_slides(uploaded)
+            if not slides:
+                note = "Could not read that .pptx here. Paste the slide text below instead."
+        if not slides and pasted.strip():
+            slides = _parse_pasted_deck(pasted)
+        if not slides:
+            st.warning(note or "Upload a .pptx or paste at least one slide.")
+        else:
+            if len(slides) > PRESENTATION_SLIDE_CAP:
+                slides = slides[:PRESENTATION_SLIDE_CAP]
+                st.info(f"Localizing the first {PRESENTATION_SLIDE_CAP} slides for this demo.")
+            with st.spinner("Localizing your deck…"):
+                try:
+                    deck = generation_service.localize_deck(
+                        slides,
+                        {"audience": audience, "formality": formality, "purpose": purpose},
+                        profile,
+                    )
+                except GenerationError as error:
+                    st.error(str(error))
+                else:
+                    st.session_state.localized_deck = deck
+                    st.session_state.localized_slide_inputs = slides
+
+    deck = st.session_state.get("localized_deck")
+    if deck is not None:
+        _render_localized_deck(deck, st.session_state.get("localized_slide_inputs", []))
+
+
 def render_translate() -> None:
     st.title("Translate")
     st.info("Workplace translation will be added in a later increment.")
@@ -1076,6 +1213,7 @@ def render_profile(
 PAGE_RENDERERS: dict[str, PageRenderer] = {
     "Home": render_home,
     "Learn": render_learn,
+    "Presentation": render_presentation,
     "Translate": render_translate,
     "Progress": render_progress,
     "Profile": render_profile,
@@ -1219,6 +1357,8 @@ def main() -> None:
         render_home(profile, lesson_service, user_id)
     elif selected_page == "Learn":
         render_learn(lesson_service, user_id, profile, generation_service)
+    elif selected_page == "Presentation":
+        render_presentation(generation_service, profile)
     elif selected_page == "Progress":
         render_progress(lesson_service, user_id)
     elif selected_page == "Profile":
