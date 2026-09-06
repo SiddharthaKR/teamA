@@ -11,12 +11,15 @@ from sqlalchemy import Engine
 from .auth import AuthenticationError, AuthenticationService, RegistrationError
 from .database import check_database, create_database_engine
 from .generation import (
+    Comprehensibility,
     GenerationError,
     GeneratedQuiz,
     LessonGenerationService,
     OpenAICompatibleTransport,
+    Recovery,
     ScenarioMode,
     detect_scenario_mode,
+    evaluate_graduation,
 )
 from .lesson import (
     ActiveLesson,
@@ -347,6 +350,153 @@ def _clear_active_lesson() -> None:
             "quiz_generation_error",
         } or key.startswith(("lesson_answer_", "lesson_retry_")):
             st.session_state.pop(key, None)
+    _clear_roleplay()
+
+
+def _clear_roleplay() -> None:
+    for key in list(st.session_state):
+        if key.startswith("roleplay_"):
+            st.session_state.pop(key, None)
+
+
+def _roleplay_reply_input(slot: str, options: tuple[str, ...], guided: bool) -> str:
+    """Guided learners pick a line; higher levels type free Japanese."""
+
+    if guided:
+        choice = st.radio(
+            "Your reply",
+            options,
+            index=None,
+            key=f"roleplay_{slot}_choice",
+            label_visibility="collapsed",
+        )
+        return choice or ""
+    return st.text_area(
+        "Your reply in Japanese",
+        key=f"roleplay_{slot}_text",
+        label_visibility="collapsed",
+        height=68,
+    ).strip()
+
+
+def render_roleplay(
+    generation_service: LessonGenerationService | None,
+    profile: ProfileRecord | None,
+) -> None:
+    """Focused takeover screen for the situation roleplay stage."""
+
+    challenge = st.session_state.get("roleplay_challenge")
+    stage = st.session_state.get("roleplay_stage")
+    st.title("Conversation practice")
+    if st.button("Leave conversation practice", key="leave_roleplay"):
+        _clear_roleplay()
+        st.rerun()
+    if challenge is None or profile is None:
+        st.info("This conversation practice is no longer available.")
+        return
+
+    # Brief: the roadmap, shown before practice so the finish line is visible.
+    st.subheader(challenge.goal)
+    st.caption(
+        f"You: {challenge.learner_role}  ·  Them: {challenge.counterpart_role}  ·  "
+        f"{challenge.setting}"
+    )
+    st.markdown("**You graduate when you can:**")
+    for criterion in challenge.success_criteria:
+        st.markdown(f"- {criterion}")
+    with st.expander("Toolkit: phrases you can use"):
+        for phrase in challenge.toolkit:
+            label = "recovery" if phrase.kind == "recovery" else "target"
+            st.markdown(
+                f"**{phrase.japanese}** ({phrase.reading}) — {phrase.meaning}  ·  _{label}_"
+            )
+
+    if stage == "brief":
+        if st.button("Start roleplay", type="primary", key="begin_roleplay"):
+            st.session_state.roleplay_stage = "respond"
+            st.rerun()
+        return
+
+    level = profile.estimated_working_level or profile.declared_level
+    guided = level in (
+        JapaneseLevel.COMPLETE_BEGINNER,
+        JapaneseLevel.N5,
+        JapaneseLevel.N4,
+        JapaneseLevel.UNSURE,
+    )
+
+    st.divider()
+    st.markdown(f"**{challenge.counterpart_role} says:**")
+    st.markdown(f"> {challenge.opening_line}")
+    opening_reply = _roleplay_reply_input("open", challenge.opening_options, guided)
+
+    st.markdown(f"**Then, unexpectedly ({challenge.curveball_type}):**")
+    st.markdown(f"> {challenge.curveball_line}")
+    curveball_reply = _roleplay_reply_input("curve", challenge.curveball_options, guided)
+
+    if stage == "respond":
+        if st.button("Submit for feedback", type="primary", key="submit_roleplay"):
+            if not opening_reply or not curveball_reply:
+                st.warning("Answer both lines before submitting.")
+            elif generation_service is None:
+                st.error("Feedback is unavailable until model configuration is complete.")
+            else:
+                with st.spinner("Evaluating your conversation..."):
+                    try:
+                        judgement = generation_service.judge_roleplay(
+                            challenge, opening_reply, curveball_reply
+                        )
+                    except GenerationError as error:
+                        st.error(str(error))
+                    else:
+                        st.session_state.roleplay_verdict = judgement.verdict
+                        st.session_state.roleplay_provider = judgement.provider_name
+                        st.session_state.roleplay_stage = "verdict"
+                        st.rerun()
+        return
+
+    # Verdict
+    verdict = st.session_state.get("roleplay_verdict")
+    if verdict is None:
+        return
+    result = evaluate_graduation(verdict)
+    st.divider()
+    st.subheader("Feedback")
+
+    def _row(label: str, passed: bool, detail: str) -> None:
+        st.markdown(f"{'✅' if passed else '❌'} **{label}** — {detail}")
+
+    _row("Goal achieved", verdict.goal_achieved, verdict.goal_evidence)
+    _row(
+        "Comprehensible",
+        verdict.comprehensible != Comprehensibility.NO,
+        f"{verdict.comprehensible.value}: {verdict.comprehensible_evidence}",
+    )
+    _row("Right register", verdict.register_appropriate, verdict.register_evidence)
+    _row(
+        "Recovered from the surprise",
+        verdict.recovered_from_curveball != Recovery.NO,
+        f"{verdict.recovered_from_curveball.value}: {verdict.recovery_evidence}",
+    )
+    provider = st.session_state.get("roleplay_provider")
+    if provider:
+        st.caption(f"Evaluated with {provider}")
+
+    if result.graduated:
+        st.success("🎓 You graduated this situation.")
+        st.markdown(
+            f"**Now try it for real.** This week, actually {challenge.goal[0].lower()}"
+            f"{challenge.goal[1:]}. Then come back and tell me how it went."
+        )
+    else:
+        st.warning(
+            "Almost. Focus next on: " + ", ".join(result.failed_criteria) + "."
+        )
+        if st.button("Try again", key="retry_roleplay"):
+            for key in ("roleplay_verdict", "roleplay_provider"):
+                st.session_state.pop(key, None)
+            st.session_state.roleplay_stage = "respond"
+            st.rerun()
 
 
 def render_learn(
@@ -363,6 +513,10 @@ def render_learn(
     if "last_lesson_completion" in st.session_state:
         st.success("Lesson completed. Your compact progress and review schedule were saved.")
         st.session_state.pop("last_lesson_completion", None)
+
+    if st.session_state.get("roleplay_stage"):
+        render_roleplay(generation_service, profile)
+        return
 
     active = st.session_state.get("active_lesson")
     draft = st.session_state.get("active_lesson_draft")
@@ -706,6 +860,30 @@ def render_learn(
                 _clear_active_lesson()
                 st.session_state.last_lesson_completion = True
                 st.rerun()
+
+        st.divider()
+        st.subheader("Practice the conversation")
+        st.caption(
+            "Roleplay this situation and handle one curveball, then get feedback on whether "
+            "you are ready to have it for real."
+        )
+        if generation_service is not None and profile is not None:
+            if st.button("Practice this conversation", key="start_roleplay"):
+                with st.spinner("Preparing your conversation challenge..."):
+                    try:
+                        generated = generation_service.generate_situation_challenge(
+                            lesson, profile
+                        )
+                    except GenerationError as error:
+                        st.error(str(error))
+                    else:
+                        _clear_roleplay()
+                        st.session_state.roleplay_challenge = generated.challenge
+                        st.session_state.roleplay_provider = generated.provider_name
+                        st.session_state.roleplay_stage = "brief"
+                        st.rerun()
+        else:
+            st.info("Conversation practice needs model configuration.")
 
     if st.button("Leave lesson", key="leave_fixture_lesson"):
         _clear_active_lesson()
