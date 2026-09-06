@@ -76,7 +76,30 @@ class FixtureQuestion(BaseModel):
     prompt: str = Field(min_length=1)
     options: tuple[str, ...] = Field(min_length=4, max_length=4)
     correct_option_index: int = Field(ge=0, le=3)
+    # Self-checking answer key. When a generator supplies the correct option's
+    # exact text here, the position is resolved deterministically below instead of
+    # trusting a hand-counted index a small model can miscount (or that silently
+    # drifts if it reorders the options). Fixtures omit it and keep their index.
+    # Excluded from serialization so it never lands in a persisted dump.
+    correct_value: str | None = Field(default=None, exclude=True)
     explanation: str = Field(min_length=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_correct_value(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+        value = data.get("correct_value")
+        options = data.get("options")
+        if value is None or not isinstance(options, (list, tuple)):
+            return data
+        normalized = [str(option).strip() for option in options]
+        target = str(value).strip()
+        if target not in normalized:
+            raise ValueError(
+                "correct_value must exactly match one of the options."
+            )
+        return {**data, "correct_option_index": normalized.index(target)}
 
     @model_validator(mode="after")
     def validate_options(self) -> "FixtureQuestion":

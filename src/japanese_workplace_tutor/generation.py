@@ -717,6 +717,39 @@ def _validate_explanations(
             raise ValueError("Every target item must appear in the line explanations.")
 
 
+def extract_json_text(content: str) -> str:
+    """Recover a JSON document from a possibly noisy model response.
+
+    Smaller models frequently wrap their JSON in markdown ```code fences``` or
+    surround it with a sentence of prose, which then breaks ``json.loads``. This
+    returns the outermost ``{...}`` or ``[...]`` span so parsing still succeeds.
+    When no bracket is present the original text is returned unchanged, so the
+    caller's ``json.loads`` still raises a clear, unaltered error.
+    """
+
+    text = content.strip()
+    starts = [index for index in (text.find("{"), text.find("[")) if index != -1]
+    if not starts:
+        return text
+    start = min(starts)
+    close = "}" if text[start] == "{" else "]"
+    end = text.rfind(close)
+    if end <= start:
+        return text
+    return text[start : end + 1]
+
+
+def _provider_label(model_id: str) -> str:
+    """Human-facing provider name derived from the model id.
+
+    Deriving the label from the model (rather than hard-coding it beside each
+    attempt) lets per-phase routing swap which model is primary while the shown
+    provider name stays correct automatically.
+    """
+
+    return "GPT-5 nano" if "gpt" in model_id.lower() else "Tsuzumi 2"
+
+
 class OpenAICompatibleTransport:
     def __init__(self, base_url: str, api_key: str, timeout_seconds: float = 180.0) -> None:
         self._url = f"{base_url.rstrip('/')}/chat/completions"
@@ -731,6 +764,51 @@ class OpenAICompatibleTransport:
         user_prompt: str,
         response_schema: dict[str, object] | None = None,
         timeout_seconds: float | None = None,
+    ) -> str:
+        content = self._post_with_degrade(
+            model_id, system_prompt, user_prompt, response_schema, timeout_seconds
+        )
+        return extract_json_text(content)
+
+    def _post_with_degrade(
+        self,
+        model_id: str,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: dict[str, object] | None,
+        timeout_seconds: float | None,
+    ) -> str:
+        try:
+            return self._request(
+                model_id, system_prompt, user_prompt, response_schema, timeout_seconds
+            )
+        except requests.HTTPError as error:
+            # Some OpenAI-compatible endpoints (notably smaller or local models such
+            # as the primary) reject strict json_schema structured output with a 4xx.
+            # Degrade once to plain json_object mode, describing the schema in the
+            # prompt instead, rather than failing the whole attempt and burning a
+            # fallback. A 5xx or a request without a schema is re-raised untouched.
+            status = getattr(error.response, "status_code", None)
+            if response_schema is None or status is None or not 400 <= status < 500:
+                raise
+            degraded_system = (
+                system_prompt
+                + "\n\nYour endpoint does not support schema-constrained output, so "
+                "return a single JSON object that strictly conforms to this JSON "
+                "schema, with no markdown fences or extra text:\n"
+                + json.dumps(response_schema, ensure_ascii=False)
+            )
+            return self._request(
+                model_id, degraded_system, user_prompt, None, timeout_seconds
+            )
+
+    def _request(
+        self,
+        model_id: str,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: dict[str, object] | None,
+        timeout_seconds: float | None,
     ) -> str:
         request_payload: dict[str, object] = {
             "model": model_id,
@@ -778,6 +856,8 @@ class LessonGenerationService:
         hedge_after_seconds: float | None = None,
         parallel_explanations: bool = False,
         explanation_workers: int = 4,
+        quiz_primary_model: str | None = None,
+        quiz_fallback_model: str | None = None,
     ) -> None:
         self._transport = transport
         self._primary_model = primary_model
@@ -786,6 +866,19 @@ class LessonGenerationService:
         self._hedge_after_seconds = hedge_after_seconds
         self._parallel_explanations = parallel_explanations
         self._explanation_workers = max(1, explanation_workers)
+        # Per-phase routing: the primary is strong at Japanese generation but weak at
+        # strict quiz JSON, so a deployment may route the quiz phase to a different,
+        # more structured model. Defaults to the global models, preserving the plain
+        # primary-then-fallback behavior when unset.
+        self._quiz_primary_model = quiz_primary_model or primary_model
+        self._quiz_fallback_model = quiz_fallback_model or fallback_model
+
+    def _phase_models(self, phase: str) -> tuple[str, str]:
+        """Return (primary_model, fallback_model) for a generation phase."""
+
+        if phase == "quiz":
+            return self._quiz_primary_model, self._quiz_fallback_model
+        return self._primary_model, self._fallback_model
 
     def generate(
         self,
@@ -930,18 +1023,26 @@ class LessonGenerationService:
     ) -> tuple[PackageT, str]:
         repair_feedback = "The previous request failed before producing valid JSON."
         skip_primary_repair = False
+        primary_model, fallback_model = self._phase_models(phase)
         attempts = (
-            ("Tsuzumi 2", self._primary_model, 1, None, False, self._primary_timeout_seconds),
             (
-                "Tsuzumi 2",
-                self._primary_model,
+                _provider_label(primary_model),
+                primary_model,
+                1,
+                None,
+                False,
+                self._primary_timeout_seconds,
+            ),
+            (
+                _provider_label(primary_model),
+                primary_model,
                 2,
                 "primary_retry",
                 True,
                 self._primary_timeout_seconds,
             ),
-            ("GPT-5 nano", self._fallback_model, 1, "primary_failed", False, None),
-            ("GPT-5 nano", self._fallback_model, 2, "fallback_retry", True, None),
+            (_provider_label(fallback_model), fallback_model, 1, "primary_failed", False, None),
+            (_provider_label(fallback_model), fallback_model, 2, "fallback_retry", True, None),
         )
         if self._hedge_after_seconds is not None:
             hedged = self._race_first_attempts(
@@ -960,7 +1061,7 @@ class LessonGenerationService:
             is_repair,
             timeout_seconds,
         ) in attempts:
-            if model_id == self._primary_model and is_repair and skip_primary_repair:
+            if model_id == primary_model and is_repair and skip_primary_repair:
                 continue
             started = monotonic()
             try:
@@ -981,7 +1082,7 @@ class LessonGenerationService:
                 is_validation_failure = isinstance(
                     error, (ValidationError, ValueError, KeyError, TypeError)
                 )
-                if model_id == self._primary_model and not is_repair:
+                if model_id == primary_model and not is_repair:
                     skip_primary_repair = not is_validation_failure
                 self._log_attempt(
                     provider_name,
@@ -1158,6 +1259,8 @@ class LessonGenerationService:
     ) -> _HedgeOutcome:
         """Start the fallback beside a slow primary so one stalled route cannot own the request."""
 
+        primary_model, fallback_model = self._phase_models(phase)
+
         def run(
             provider_name: str,
             model_id: str,
@@ -1191,8 +1294,8 @@ class LessonGenerationService:
             pending = {
                 pool.submit(
                     run,
-                    "Tsuzumi 2",
-                    self._primary_model,
+                    _provider_label(primary_model),
+                    primary_model,
                     None,
                     self._primary_timeout_seconds,
                 )
@@ -1208,8 +1311,8 @@ class LessonGenerationService:
                     pending.add(
                         pool.submit(
                             run,
-                            "GPT-5 nano",
-                            self._fallback_model,
+                            _provider_label(fallback_model),
+                            fallback_model,
                             "primary_hedged",
                             None,
                         )
@@ -1239,7 +1342,7 @@ class LessonGenerationService:
                     is_validation_failure = isinstance(
                         error, (ValidationError, ValueError, KeyError, TypeError)
                     )
-                    if outcome.model_id == self._primary_model:
+                    if outcome.model_id == primary_model:
                         skip_primary_repair = not is_validation_failure
                     self._log_attempt(
                         outcome.provider_name,
@@ -1249,12 +1352,12 @@ class LessonGenerationService:
                         outcome.started,
                         f"{phase}:{outcome.fallback_reason or ('validation_failure' if is_validation_failure else 'technical_failure')}",
                     )
-                    if outcome.model_id == self._primary_model and not hedged:
+                    if outcome.model_id == primary_model and not hedged:
                         pending.add(
                             pool.submit(
                                 run,
-                                "GPT-5 nano",
-                                self._fallback_model,
+                                _provider_label(fallback_model),
+                                fallback_model,
                                 "primary_failed",
                                 None,
                             )
@@ -1439,6 +1542,10 @@ class LessonGenerationService:
             "filler. Reading questions offer four kana-only readings that differ only in small "
             "details such as long vowels, voicing, or a small tsu. Meaning questions offer "
             "distractors drawn from the same category and register as the answer. "
+            "ANSWER KEY. For every question and retry, set correct_value to the exact text "
+            "of the correct option, copied verbatim from that question's options. The "
+            "application resolves the position from that text, so you never need to count "
+            "option numbers. Still set correct_option_index consistently. "
             "Prefer weaker and less-mastered items "
             "from learning_history while still sampling the lesson's categories. Each retry must "
             "keep the original item_id but use a different form and prompt."

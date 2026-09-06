@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     model_api_key: SecretStr | None = None
     primary_model: str | None = None
     fallback_model: str | None = None
+    # Per-phase routing for the strict-JSON quiz step. The primary model is strong at
+    # Japanese but weak at rigid quiz JSON, so the quiz phase defaults to the fallback
+    # (structured) model, then falls back to the primary. Set either to override.
+    quiz_primary_model: str | None = None
+    quiz_fallback_model: str | None = None
     model_timeout_seconds: float = 180.0
     primary_model_timeout_seconds: float = 150.0
     # None keeps the strictly sequential primary-then-fallback route.

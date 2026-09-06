@@ -155,6 +155,8 @@ def _generation_service(
     hedge_after_seconds: float | None,
     parallel_explanations: bool,
     explanation_workers: int,
+    quiz_primary_model: str,
+    quiz_fallback_model: str,
 ) -> LessonGenerationService:
     return LessonGenerationService(
         OpenAICompatibleTransport(base_url, _api_key, timeout_seconds),
@@ -164,6 +166,8 @@ def _generation_service(
         hedge_after_seconds=hedge_after_seconds,
         parallel_explanations=parallel_explanations,
         explanation_workers=explanation_workers,
+        quiz_primary_model=quiz_primary_model,
+        quiz_fallback_model=quiz_fallback_model,
     )
 
 
@@ -338,6 +342,7 @@ def _clear_active_lesson() -> None:
             "active_lesson_draft",
             "lesson_answer_results",
             "lesson_retry_results",
+            "lesson_fallback_notice",
             "quiz_generation_future",
             "quiz_generation_error",
         } or key.startswith(("lesson_answer_", "lesson_retry_")):
@@ -401,7 +406,19 @@ def render_learn(
                     ),
                 )
             except GenerationError as error:
-                st.error(str(error))
+                # Always-ship fallback: never dead-end the demo. If every model and
+                # repair attempt fails, load the ready-made fixture lesson so the
+                # learner can still complete the full loop, with an honest notice.
+                _clear_active_lesson()
+                st.session_state.active_lesson = service.start_fixture_lesson(user_id)
+                st.session_state.lesson_answer_results = {}
+                st.session_state.lesson_retry_results = {}
+                st.session_state.lesson_fallback_notice = (
+                    "Live lesson generation is temporarily unavailable, so we loaded a "
+                    "ready-made sample lesson so you can keep learning. Please try "
+                    f"generating again in a moment. (Reason: {error})"
+                )
+                st.rerun()
             else:
                 _clear_active_lesson()
                 active_draft = service.start_generated_lesson_draft(
@@ -439,6 +456,9 @@ def render_learn(
         lesson = draft.content
         line_explanations = draft.line_explanations
         provider_name = draft.provider_name
+    fallback_notice = st.session_state.get("lesson_fallback_notice")
+    if isinstance(fallback_notice, str):
+        st.warning(fallback_notice)
     st.subheader(lesson.title)
     st.caption(f"Difficulty: {lesson.difficulty}")
     if provider_name is not None:
@@ -1003,6 +1023,10 @@ def main() -> None:
                 settings.hedge_after_seconds,
                 settings.parallel_explanations,
                 settings.explanation_workers,
+                # Route the strict-JSON quiz phase to the structured (fallback) model
+                # first, then the primary. Overridable via JLT_QUIZ_* settings.
+                settings.quiz_primary_model or settings.fallback_model,
+                settings.quiz_fallback_model or settings.primary_model,
             )
     profile = profile_service.get_profile(user_id)
     if profile is None:
