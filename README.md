@@ -2,6 +2,25 @@
 
 T07 provides a safe, local Streamlit application with persistent demo accounts, user-scoped learner profiles, validated generated scenario lessons, compact evidence-based mastery, and a skippable due-item review workflow.
 
+## Overview (for evaluators)
+
+Global employees in Japan can pass the JLPT yet struggle to operate in Japanese at work, and generic AI output is easily spotted as machine-written: wrong keigo, literal phrasing, and a slide flow that does not match Japanese norms. This app teaches workplace Japanese, lets learners rehearse real situations, and makes their Japanese read as a person wrote it.
+
+### Capabilities
+- Personalized lessons with evidence-based mastery and spaced repetition (the model proposes, the app decides; scoring is deterministic).
+- Situation roleplay: practice a real workplace conversation, handle one curveball, and graduate when ready.
+- Presentation localizer: turn an English deck into natural Japanese to paste, with the right register, a flow review, and per-slide speaker and nuance notes. Deck-type aware (technical, work status, business, casual/D&I, speech).
+- Practice presenting: per-slide delivery coaching plus rehearsal with feedback.
+
+### Architecture in one line
+A Streamlit UI over a single generation service that routes each step to the model that is good at it (Tsuzumi for Japanese, a structured model for strict JSON), with tolerant parsing, per-phase fallback, and an always-ship fixture lesson so it never dead-ends.
+
+### Reliability and privacy
+Two-model fallback and schema validation keep generation working under failure; lessons, documents, and translations are ephemeral (only compact progress is stored); everything runs locally.
+
+### Demo
+See [`DEMO_GUIDE.md`](./DEMO_GUIDE.md). Sample input: `samples/demo_deck.pptx`; reference output: `samples/expected_output.md`. Keep `JLT_PRIMARY_MODEL=gpt-5-nano` for a fast demo.
+
 ## Requirements
 
 - Windows with Python 3.14.3 (pinned in `.python-version`)

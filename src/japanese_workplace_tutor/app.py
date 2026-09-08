@@ -1,5 +1,6 @@
 """Streamlit application with persistent local demo authentication."""
 
+import re
 from collections.abc import Callable, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
 from html import escape
@@ -20,6 +21,7 @@ from .generation import (
     ScenarioMode,
     SlideInput,
     detect_scenario_mode,
+    evaluate_delivery,
     evaluate_graduation,
 )
 from .lesson import (
@@ -893,6 +895,15 @@ def render_learn(
 
 PRESENTATION_SLIDE_CAP = 6
 
+# Display label -> deck_type key understood by DECK_TYPE_GUIDANCE in generation.py.
+DECK_TYPE_OPTIONS = {
+    "Business / proposal": "business",
+    "Technical": "technical",
+    "Work status / progress": "status",
+    "Casual / D&I / awareness": "casual_di",
+    "Presentation / speech": "speech",
+}
+
 
 def _parse_pptx_slides(uploaded_file) -> list[SlideInput]:
     """Read title + body text from an uploaded .pptx. Returns [] if unreadable."""
@@ -929,10 +940,16 @@ def _parse_pptx_slides(uploaded_file) -> list[SlideInput]:
 
 
 def _parse_pasted_deck(text: str) -> list[SlideInput]:
-    """Split pasted text into slides on '---'; first line is the title."""
+    """Split pasted text into slides. Prefer explicit '---' separators; if there
+    are none, fall back to blank-line gaps so a whole deck isn't treated as one
+    giant slide. First non-empty line of each block is the title."""
 
+    if "---" in text:
+        blocks = text.split("---")
+    else:
+        blocks = re.split(r"\n\s*\n", text)
     slides: list[SlideInput] = []
-    for block in text.split("---"):
+    for block in blocks:
         lines = [line for line in block.splitlines() if line.strip()]
         if not lines:
             continue
@@ -964,6 +981,158 @@ def _render_localized_deck(deck, slide_inputs: list[SlideInput]) -> None:
             st.write(localization.nuance_notes)
 
 
+def _clear_present_practice() -> None:
+    for key in list(st.session_state):
+        if key.startswith("practice_"):
+            st.session_state.pop(key, None)
+
+
+def _practice_reply_input(index: int, options: tuple[str, ...], guided: bool) -> str:
+    if guided:
+        choice = st.radio(
+            "Your delivery",
+            options,
+            index=None,
+            key=f"practice_choice_{index}",
+            label_visibility="collapsed",
+        )
+        return choice or ""
+    return st.text_area(
+        "Say it in Japanese",
+        key=f"practice_text_{index}",
+        label_visibility="collapsed",
+        height=80,
+    ).strip()
+
+
+def _start_practice(
+    generation_service: LessonGenerationService,
+    profile: ProfileRecord | None,
+    slides: list[SlideInput],
+    context: dict[str, str],
+    titles: list[str],
+) -> bool:
+    with st.spinner("Preparing delivery coaching…"):
+        try:
+            coached = generation_service.coach_deck_delivery(slides, context, profile)
+        except GenerationError as error:
+            st.error(str(error))
+            return False
+    _clear_present_practice()
+    st.session_state.practice_slides = slides
+    st.session_state.practice_titles = titles
+    st.session_state.practice_coaching = coached.slides
+    st.session_state.practice_provider = coached.provider_name
+    st.session_state.practice_context = context
+    st.session_state.practice_index = 0
+    st.session_state.practice_results = {}
+    return True
+
+
+def render_present_practice(
+    generation_service: LessonGenerationService | None,
+    profile: ProfileRecord | None,
+) -> None:
+    """Focused takeover: coach and rehearse delivery, one slide at a time."""
+
+    st.title("Practice presenting")
+    if st.button("Leave practice", key="leave_practice"):
+        _clear_present_practice()
+        st.rerun()
+    coaching = st.session_state.get("practice_coaching")
+    slides = st.session_state.get("practice_slides")
+    if not coaching or not slides or profile is None:
+        st.info("This practice session is no longer available.")
+        return
+
+    context = st.session_state.get("practice_context", {})
+    index = st.session_state.get("practice_index", 0)
+    total = len(coaching)
+    results = st.session_state.setdefault("practice_results", {})
+    provider = st.session_state.get("practice_provider", "")
+    st.caption(f"Slide {index + 1} of {total}  ·  coaching by {provider}")
+
+    slide = slides[index]
+    coach = coaching[index]
+    st.subheader(slide.title)
+    if slide.body:
+        st.markdown(slide.body.replace("\n", "  \n"))
+    st.markdown(f"**Key message:** {coach.key_message}")
+    with st.expander("How to deliver this slide", expanded=True):
+        st.markdown("**Transition in**")
+        st.code(coach.transition_in, language=None)
+        st.markdown("**What to say (script)**")
+        st.code(coach.spoken_script, language=None)
+        st.markdown("**Delivery tips**")
+        st.write(coach.delivery_tips)
+
+    st.divider()
+    st.markdown("**Now you present this slide:**")
+    level = profile.estimated_working_level or profile.declared_level
+    guided = level in (
+        JapaneseLevel.COMPLETE_BEGINNER,
+        JapaneseLevel.N5,
+        JapaneseLevel.N4,
+        JapaneseLevel.UNSURE,
+    )
+    reply = _practice_reply_input(index, coach.rehearsal_options, guided)
+
+    if index not in results:
+        if st.button("Get feedback", type="primary", key=f"practice_submit_{index}"):
+            if not reply:
+                st.warning("Say your line first.")
+            elif generation_service is None:
+                st.error("Feedback is unavailable until model configuration is complete.")
+            else:
+                with st.spinner("Evaluating your delivery…"):
+                    try:
+                        judged = generation_service.judge_delivery(
+                            coach, slide, reply, context
+                        )
+                    except GenerationError as error:
+                        st.error(str(error))
+                    else:
+                        results[index] = judged.verdict
+                        st.rerun()
+        return
+
+    verdict = results[index]
+    outcome = evaluate_delivery(verdict)
+
+    def _row(label: str, passed: bool, detail: str) -> None:
+        st.markdown(f"{'✅' if passed else '❌'} **{label}** — {detail}")
+
+    _row("Covers the key message", verdict.covers_key_message, verdict.coverage_evidence)
+    _row(
+        "Comprehensible",
+        verdict.comprehensible != Comprehensibility.NO,
+        f"{verdict.comprehensible.value}: {verdict.comprehensible_evidence}",
+    )
+    _row("Right register", verdict.register_appropriate, verdict.register_evidence)
+    st.info(f"Tip: {verdict.improvement_tip}")
+    if outcome.passed:
+        st.success("Nailed this slide.")
+    else:
+        st.warning("Focus on: " + ", ".join(outcome.failed_criteria) + ".")
+
+    left, right = st.columns(2)
+    if left.button("Retry this slide", key=f"practice_retry_{index}"):
+        results.pop(index, None)
+        for stale in (f"practice_choice_{index}", f"practice_text_{index}"):
+            st.session_state.pop(stale, None)
+        st.rerun()
+    if index + 1 < total:
+        if right.button("Next slide", type="primary", key=f"practice_next_{index}"):
+            st.session_state.practice_index = index + 1
+            st.rerun()
+    else:
+        passed = sum(1 for verdict in results.values() if evaluate_delivery(verdict).passed)
+        st.success(f"Deck complete — you passed {passed} of {total} slides.")
+        st.markdown(
+            "**Next: rehearse the whole deck out loud once, then present it for real.**"
+        )
+
+
 def render_presentation(
     generation_service: LessonGenerationService | None = None,
     profile: ProfileRecord | None = None,
@@ -977,6 +1146,10 @@ def render_presentation(
         st.info("Presentation localization needs model configuration.")
         return
 
+    if st.session_state.get("practice_coaching"):
+        render_present_practice(generation_service, profile)
+        return
+
     audience = st.selectbox(
         "Audience", ("client", "manager", "peer", "subordinate", "executive"), index=0
     )
@@ -985,11 +1158,19 @@ def render_presentation(
         "Formality", ("formal", "standard business", "casual business"), index=1
     )
     purpose = purpose_col.text_input("Occasion / purpose", value="internal report")
+    deck_type_label = st.selectbox("Deck type", tuple(DECK_TYPE_OPTIONS), index=0)
+    deck_type = DECK_TYPE_OPTIONS[deck_type_label]
+    context = {
+        "audience": audience,
+        "formality": formality,
+        "purpose": purpose,
+        "deck_type": deck_type,
+    }
 
     st.markdown("**Your deck**")
     uploaded = st.file_uploader("Upload a .pptx", type=["pptx"])
     pasted = st.text_area(
-        "…or paste slides (separate each slide with a line containing only ---)",
+        "…or paste slides (separate each slide with a blank line, or a line of ---)",
         height=200,
         placeholder="Q3 Results\nRevenue grew 12%\nAPAC drove growth\n---\nNext Steps\nExpand to two new markets",
     )
@@ -1011,11 +1192,7 @@ def render_presentation(
                 st.info(f"Localizing the first {PRESENTATION_SLIDE_CAP} slides for this demo.")
             with st.spinner("Localizing your deck…"):
                 try:
-                    deck = generation_service.localize_deck(
-                        slides,
-                        {"audience": audience, "formality": formality, "purpose": purpose},
-                        profile,
-                    )
+                    deck = generation_service.localize_deck(slides, context, profile)
                 except GenerationError as error:
                     st.error(str(error))
                 else:
@@ -1025,6 +1202,41 @@ def render_presentation(
     deck = st.session_state.get("localized_deck")
     if deck is not None:
         _render_localized_deck(deck, st.session_state.get("localized_slide_inputs", []))
+        st.divider()
+        st.caption("Ready to deliver it? Practice presenting these Japanese slides and get feedback.")
+        if st.button("Practice presenting this deck", key="practice_localized"):
+            slides = [
+                SlideInput(loc.japanese_title, loc.japanese_body) for loc in deck.slides
+            ]
+            titles = [s.title for s in st.session_state.get("localized_slide_inputs", [])]
+            if _start_practice(generation_service, profile, slides, context, titles):
+                st.rerun()
+
+    st.divider()
+    st.subheader("Practice presenting an existing Japanese deck")
+    st.caption("Already have Japanese slides? Upload or paste them and rehearse your delivery.")
+    jp_uploaded = st.file_uploader("Upload a Japanese .pptx", type=["pptx"], key="jp_deck_upload")
+    jp_pasted = st.text_area(
+        "…or paste Japanese slides (separate each slide with a blank line, or a line of ---)",
+        height=150,
+        key="jp_deck_paste",
+    )
+    if st.button("Practice presenting", key="practice_fresh"):
+        jp_slides: list[SlideInput] = []
+        if jp_uploaded is not None:
+            jp_slides = _parse_pptx_slides(jp_uploaded)
+        if not jp_slides and jp_pasted.strip():
+            jp_slides = _parse_pasted_deck(jp_pasted)
+        if not jp_slides:
+            st.warning("Upload or paste a Japanese deck first.")
+        else:
+            if len(jp_slides) > PRESENTATION_SLIDE_CAP:
+                jp_slides = jp_slides[:PRESENTATION_SLIDE_CAP]
+                st.info(f"Practicing the first {PRESENTATION_SLIDE_CAP} slides.")
+            if _start_practice(
+                generation_service, profile, jp_slides, context, [s.title for s in jp_slides]
+            ):
+                st.rerun()
 
 
 def render_translate() -> None:
