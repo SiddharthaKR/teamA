@@ -1,0 +1,301 @@
+<title>Tutor System Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a schematic sheet. Layers are horizontal bands top to bottom in dependency order;
+   blocks are parts with reference designators; wires are imports and runtime calls. */
+:root {
+  --bg: #f2f5f4; --sheet: #fbfcfc; --panel: #ffffff; --ink: #17202a; --muted: #5a6571;
+  --rule: #d7dedc; --dot: #cfd7d5; --band: #eef2f1; --wire: #7d8b98; --accent: #1f55c4;
+  --accent-soft: rgba(31, 85, 196, .10); --built: #1d7a4b; --planned: #a86400; --hold: #858b95;
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1419; --sheet: #121920; --panel: #17202a; --ink: #e5eaf0; --muted: #98a4b0;
+  --rule: #26313c; --dot: #22303b; --band: #151d25; --wire: #64717f; --accent: #77a2ff;
+  --accent-soft: rgba(119, 162, 255, .14); --built: #4fc58d; --planned: #e2a23e; --hold: #7b838d;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1419; --sheet: #121920; --panel: #17202a; --ink: #e5eaf0; --muted: #98a4b0;
+  --rule: #26313c; --dot: #22303b; --band: #151d25; --wire: #64717f; --accent: #77a2ff;
+  --accent-soft: rgba(119, 162, 255, .14); --built: #4fc58d; --planned: #e2a23e; --hold: #7b838d;
+  color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-sans); }
+.page { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; max-width: 1560px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
+.sub { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toggle { font: 500 12px var(--font-sans); color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 999px; padding: 5px 11px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.toggle[aria-pressed="false"] { color: var(--muted); background: transparent; }
+.toggle:focus-visible, .part:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.scroller { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--sheet);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1px); background-size: 16px 16px; }
+.canvas { position: relative; min-width: 1000px; padding: 12px 16px 16px; display: grid; gap: 10px; }
+.wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.band { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.band-label { font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-right: 1px dashed var(--rule); padding: 10px 8px 0 0; text-align: right; }
+.parts { display: flex; flex-wrap: nowrap; gap: 12px; padding: 8px 0 18px; z-index: 1; }
+.part { position: relative; z-index: 1; flex: 1 1 0; min-width: 0; max-width: 190px; text-align: left; font: inherit; color: var(--ink); background: var(--panel); border: 1.5px solid var(--rule); border-radius: 4px; padding: 8px 10px 9px; cursor: pointer; display: grid; gap: 3px; box-shadow: 0 1px 0 var(--rule); }
+.part.wide { flex: 0 1 760px; max-width: 760px; }
+.part .ref { font: 500 10.5px var(--font-mono); color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+.part .name { font-weight: 600; font-size: 13.5px; line-height: 1.25; overflow-wrap: anywhere; }
+.part .meta { overflow-wrap: anywhere; }
+.part .meta { font: 11px var(--font-mono); color: var(--muted); }
+.part.built { border-left: 4px solid var(--built); }
+.part.planned { border-style: dashed; border-left: 4px dashed var(--planned); background: transparent; }
+.part.on_hold { border-style: dashed; border-color: var(--hold); background: repeating-linear-gradient(135deg, transparent 0 6px, var(--band) 6px 12px); color: var(--muted); }
+.part.actor, .part.external { border-radius: 14px; }
+.part[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.part.dim { opacity: .35; }
+.status { font: 500 10px var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
+.status.built { color: var(--built); } .status.planned { color: var(--planned); } .status.on_hold { color: var(--hold); }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; display: grid; gap: 12px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); min-width: 0; }
+.panel h2 { margin: 0; font-size: 17px; font-weight: 600; text-wrap: balance; }
+.panel p { margin: 0; }
+.kv { display: grid; gap: 4px; }
+.kv h3 { margin: 0; font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.mono-list { margin: 0; padding: 0; list-style: none; font: 12.5px var(--font-mono); display: grid; gap: 2px; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 12px var(--font-sans); border: 1px solid var(--rule); background: transparent; color: var(--ink); border-radius: 4px; padding: 2px 8px; cursor: pointer; }
+.chip.static { cursor: default; }
+.hint { color: var(--muted); font-size: 13px; }
+.log { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; }
+.log h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+.log ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.log li { display: grid; grid-template-columns: 92px 72px minmax(0, 1fr); gap: 10px; font-size: 13px; }
+.log .when, .log .sha { font-family: var(--font-mono); color: var(--muted); font-size: 12px; }
+@media (max-width: 560px) { .log li { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+path.wire { fill: none; stroke: var(--wire); stroke-width: 1.3; opacity: .75; transition: opacity .15s; }
+path.wire.into-core { opacity: .28; }
+path.wire.implements { stroke-dasharray: 2 3; }
+path.wire.planned { stroke: var(--planned); stroke-dasharray: 6 4; opacity: .8; }
+path.wire.runtime { stroke: var(--accent); opacity: .55; }
+path.wire.hot { stroke: var(--accent); stroke-width: 2; opacity: 1; }
+path.wire.faded { opacity: .07; }
+@media (prefers-reduced-motion: reduce) { path.wire { transition: none; } }
+</style>
+
+<div class="page">
+  <header>
+    <div>
+      <h1 id="title">System map</h1>
+      <div class="sub" id="version"></div>
+    </div>
+    <div class="controls" role="group" aria-label="Show">
+      <button class="toggle" id="t-planned" aria-pressed="true"><span class="swatch" style="border:1.5px dashed var(--planned)"></span>Planned</button>
+      <button class="toggle" id="t-hold" aria-pressed="true"><span class="swatch" style="border:1.5px dashed var(--hold)"></span>On hold</button>
+      <button class="toggle" id="t-core" aria-pressed="false"><span class="swatch" style="background:var(--wire)"></span>Imports into core</button>
+      <span class="toggle" style="cursor:default"><span class="swatch" style="background:var(--built)"></span>Built</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="scroller" id="scroller">
+      <div class="canvas" id="canvas">
+        <svg class="wires" id="wires" aria-hidden="true">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--wire)"/></marker>
+            <marker id="arrow-hot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--accent)"/></marker>
+            <marker id="arrow-planned" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--planned)"/></marker>
+          </defs>
+          <g id="wire-layer"></g>
+        </svg>
+      </div>
+    </div>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </div>
+
+  <section class="log" aria-labelledby="log-title">
+    <h2 id="log-title">Design history</h2>
+    <ol id="log"></ol>
+  </section>
+</div>
+
+<script>
+const GRAPH = /*GRAPH_JSON*/;
+const byId = Object.fromEntries(GRAPH.blocks.map(b => [b.id, b]));
+const rowIndex = Object.fromEntries(GRAPH.rows.map((r, i) => [r.id, i]));
+const STATUS = { built: "Built", planned: "Planned", on_hold: "On hold" };
+const RUNTIME = new Set(["uses", "calls", "reads", "stores", "feeds"]);
+const state = { selected: null, hover: null, planned: true, hold: true, core: false };
+try { const s = JSON.parse(localStorage.getItem("tutor-map-view") || "{}"); Object.assign(state, { planned: s.planned ?? true, hold: s.hold ?? true, core: s.core ?? false }); } catch (e) {}
+
+const canvas = document.getElementById("canvas");
+const layer = document.getElementById("wire-layer");
+const panel = document.getElementById("panel");
+document.getElementById("title").textContent = GRAPH.name + " system map";
+document.getElementById("version").textContent = GRAPH.version;
+
+const els = {};
+for (const row of GRAPH.rows) {
+  const band = document.createElement("div");
+  band.className = "band";
+  band.innerHTML = `<div class="band-label">${row.label}</div><div class="parts"></div>`;
+  const parts = band.querySelector(".parts");
+  for (const b of GRAPH.blocks.filter(x => x.row === row.id)) {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = `part ${b.status} ${b.kind}` + (b.wide ? " wide" : "");
+    el.setAttribute("aria-pressed", "false");
+    el.dataset.id = b.id;
+    const meta = b.modules.length ? `${b.modules.length} module${b.modules.length > 1 ? "s" : ""}` : (b.phase || (b.kind === "code" ? "" : b.kind));
+    el.innerHTML = `<span class="ref"><span>${b.ref}</span><span class="status ${b.status}">${STATUS[b.status]}</span></span><span class="name"></span><span class="meta"></span>`;
+    el.querySelector(".name").textContent = b.label;
+    el.querySelector(".meta").textContent = b.wide ? b.modules.map(m => m.replace("core.", "")).join(" · ") : meta;
+    el.addEventListener("click", ev => { ev.stopPropagation(); select(state.selected === b.id ? null : b.id); });
+    el.addEventListener("mouseenter", () => { state.hover = b.id; paintWires(); });
+    el.addEventListener("mouseleave", () => { state.hover = null; paintWires(); });
+    parts.appendChild(el);
+    els[b.id] = el;
+  }
+  canvas.appendChild(band);
+}
+canvas.addEventListener("click", () => select(null));
+
+function visible(id) {
+  const b = byId[id];
+  return !((b.status === "planned" && !state.planned) || (b.status === "on_hold" && !state.hold));
+}
+
+function edgeClass(e) {
+  const classes = ["wire"];
+  if (e.kind === "planned") classes.push("planned");
+  else if (e.kind === "implements") classes.push("implements");
+  else if (RUNTIME.has(e.kind)) classes.push("runtime");
+  if (e.target === "core" && e.kind === "depends") classes.push("into-core");
+  return classes;
+}
+
+function anchors() {
+  // Spread each block's outgoing and incoming wires along its edge so they do not overlap.
+  const out = {}, inn = {};
+  for (const e of GRAPH.edges) {
+    if (!visible(e.source) || !visible(e.target)) continue;
+    (out[e.source] ||= []).push(e); (inn[e.target] ||= []).push(e);
+  }
+  const box = id => els[id].getBoundingClientRect();
+  const centerX = id => { const r = box(id); return r.left + r.width / 2; };
+  for (const list of Object.values(out)) list.sort((a, b) => centerX(a.target) - centerX(b.target));
+  for (const list of Object.values(inn)) list.sort((a, b) => centerX(a.source) - centerX(b.source));
+  return { out, inn };
+}
+
+function render() {
+  const base = canvas.getBoundingClientRect();
+  const { out, inn } = anchors();
+  const slot = (list, e, id, side) => {
+    const r = els[id].getBoundingClientRect();
+    const n = list.length, i = list.indexOf(e);
+    const span = Math.min(r.width * 0.7, n * 14);
+    const x = r.left + r.width / 2 - span / 2 + (n === 1 ? span / 2 : (span * i) / (n - 1));
+    return { x: x - base.left, y: (side === "top" ? r.top : r.bottom) - base.top };
+  };
+  layer.replaceChildren();
+  for (const e of GRAPH.edges) {
+    if (!visible(e.source) || !visible(e.target)) continue;
+    if (e.target === "core" && e.kind === "depends" && !state.core && state.selected !== e.source && state.selected !== "core" && state.hover !== e.source && state.hover !== "core") continue;
+    const down = rowIndex[byId[e.target].row] >= rowIndex[byId[e.source].row];
+    const s = slot(out[e.source], e, e.source, down ? "bottom" : "top");
+    const t = slot(inn[e.target], e, e.target, down ? "top" : "bottom");
+    let d;
+    if (rowIndex[byId[e.target].row] === rowIndex[byId[e.source].row]) {
+      const lift = 26;
+      d = `M${s.x},${s.y} C${s.x},${s.y + lift} ${t.x},${t.y - lift - 34} ${t.x},${t.y}`;
+    } else {
+      const mid = (s.y + t.y) / 2;
+      d = `M${s.x},${s.y} C${s.x},${mid} ${t.x},${mid} ${t.x},${t.y}`;
+    }
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", d);
+    p.dataset.source = e.source; p.dataset.target = e.target; p.dataset.kind = e.kind;
+    for (const c of edgeClass(e)) p.classList.add(c);
+    const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    title.textContent = `${byId[e.source].label} → ${byId[e.target].label}${e.label ? " (" + e.label + ")" : ""}`;
+    p.appendChild(title);
+    layer.appendChild(p);
+  }
+  paintWires();
+}
+
+function paintWires() {
+  const focus = state.hover || state.selected;
+  for (const p of layer.querySelectorAll("path")) {
+    const hot = focus && (p.dataset.source === focus || p.dataset.target === focus);
+    p.classList.toggle("hot", !!hot);
+    p.classList.toggle("faded", !!focus && !hot);
+    p.setAttribute("marker-end", hot ? "url(#arrow-hot)" : p.dataset.kind === "planned" ? "url(#arrow-planned)" : "url(#arrow)");
+  }
+  const related = new Set();
+  if (focus) for (const e of GRAPH.edges) { if (e.source === focus) related.add(e.target); if (e.target === focus) related.add(e.source); }
+  for (const [id, el] of Object.entries(els)) {
+    el.hidden = !visible(id);
+    el.classList.toggle("dim", !!focus && id !== focus && !related.has(id));
+    el.setAttribute("aria-pressed", String(id === state.selected));
+  }
+}
+
+function link(id) {
+  const b = byId[id];
+  return `<button class="chip" data-jump="${id}">${b.ref} ${escapeHtml(b.label)}</button>`;
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+function showPanel() {
+  const id = state.selected;
+  if (!id) {
+    const counts = { built: 0, planned: 0, on_hold: 0 };
+    for (const b of GRAPH.blocks) counts[b.status]++;
+    panel.innerHTML = `<h2>How to read this map</h2>
+      <p class="hint">Layers run top to bottom in dependency order; arrows point from the user of a part to the part it relies on. Click a part to see its modules, functions and wires.</p>
+      <div class="kv"><h3>Parts</h3><p>${counts.built} built · ${counts.planned} planned · ${counts.on_hold} on hold</p></div>
+      <div class="kv"><h3>Wires</h3><p class="hint">Grey: Python imports, checked against the code by a test. Blue: runtime use. Dotted: implements a port. Amber dashes: planned.</p></div>
+      <div class="kv"><h3>The rule</h3><p class="hint">The model proposes; the core decides. Nothing in the core imports a database, network, UI or model SDK.</p></div>`;
+    return;
+  }
+  const b = byId[id];
+  const deps = GRAPH.edges.filter(e => e.source === id).map(e => e.target);
+  const users = GRAPH.edges.filter(e => e.target === id).map(e => e.source);
+  const changed = GRAPH.changelog.filter(c => c.blocks.includes(id));
+  panel.innerHTML = `
+    <div class="kv"><h3>${b.ref} · ${GRAPH.rows[rowIndex[b.row]].label}</h3><h2>${escapeHtml(b.label)}</h2></div>
+    <div class="chips"><span class="chip static status ${b.status}">${STATUS[b.status]}</span>${b.phase ? `<span class="chip static">${escapeHtml(b.phase)}</span>` : ""}${b.decisions.map(d => `<span class="chip static" title="${escapeHtml(GRAPH.decisions[d] || "")}">Decision ${d}</span>`).join("")}</div>
+    <p>${escapeHtml(b.description)}</p>
+    ${b.modules.length ? `<div class="kv"><h3>Modules</h3><ul class="mono-list">${b.modules.map(m => `<li>${escapeHtml(m)}.py</li>`).join("")}</ul></div>` : ""}
+    ${b.tools.length ? `<div class="kv"><h3>Functions & tools</h3><ul class="mono-list">${b.tools.map(t => `<li>${escapeHtml(t)}</li>`).join("")}</ul></div>` : ""}
+    ${deps.length ? `<div class="kv"><h3>Relies on</h3><div class="chips">${[...new Set(deps)].map(link).join("")}</div></div>` : ""}
+    ${users.length ? `<div class="kv"><h3>Used by</h3><div class="chips">${[...new Set(users)].map(link).join("")}</div></div>` : ""}
+    ${changed.length ? `<div class="kv"><h3>Changed in</h3><ul class="mono-list">${changed.map(c => `<li>${c.commit} ${escapeHtml(c.title)}</li>`).join("")}</ul></div>` : ""}`;
+  for (const chip of panel.querySelectorAll("[data-jump]")) chip.addEventListener("click", () => {
+    select(chip.dataset.jump);
+    els[chip.dataset.jump].scrollIntoView({ block: "nearest", inline: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  });
+}
+
+function select(id) { state.selected = id; showPanel(); render(); }
+
+function bindToggle(btnId, key) {
+  const btn = document.getElementById(btnId);
+  btn.setAttribute("aria-pressed", String(state[key]));
+  btn.addEventListener("click", () => {
+    state[key] = !state[key];
+    btn.setAttribute("aria-pressed", String(state[key]));
+    try { localStorage.setItem("tutor-map-view", JSON.stringify({ planned: state.planned, hold: state.hold, core: state.core })); } catch (e) {}
+    render();
+  });
+}
+bindToggle("t-planned", "planned"); bindToggle("t-hold", "hold"); bindToggle("t-core", "core");
+
+document.getElementById("log").innerHTML = GRAPH.changelog.map(c =>
+  `<li><span class="when">${c.date}</span><span class="sha">${c.commit}</span><span>${escapeHtml(c.title)}</span></li>`).join("");
+
+showPanel();
+new ResizeObserver(() => render()).observe(canvas);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+render();
+</script>

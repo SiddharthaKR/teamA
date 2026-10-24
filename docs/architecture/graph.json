@@ -1,0 +1,1107 @@
+{
+ "name": "Japanese Workplace Tutor",
+ "version": "2026-10-24 · v2 · after Phase 2",
+ "package": "japanese_workplace_tutor",
+ "rows": [
+  {
+   "id": "actors",
+   "label": "People"
+  },
+  {
+   "id": "interface",
+   "label": "Interface"
+  },
+  {
+   "id": "application",
+   "label": "Application"
+  },
+  {
+   "id": "features",
+   "label": "Features"
+  },
+  {
+   "id": "contracts",
+   "label": "Model contracts"
+  },
+  {
+   "id": "core",
+   "label": "Domain core (pure)"
+  },
+  {
+   "id": "adapters",
+   "label": "Adapters"
+  },
+  {
+   "id": "external",
+   "label": "External systems & data"
+  },
+  {
+   "id": "tooling",
+   "label": "Quality & dev tools"
+  }
+ ],
+ "blocks": [
+  {
+   "id": "learner",
+   "ref": "A1",
+   "label": "Learner",
+   "row": "actors",
+   "status": "built",
+   "kind": "actor",
+   "phase": null,
+   "description": "NTT-AT employee learning workplace Japanese.",
+   "modules": [],
+   "tools": [],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "reviewer",
+   "ref": "A2",
+   "label": "Team reviewer",
+   "row": "actors",
+   "status": "built",
+   "kind": "actor",
+   "phase": null,
+   "description": "Siddhartha and the team checking accuracy before wider rollout.",
+   "modules": [],
+   "tools": [],
+   "decisions": [
+    9
+   ],
+   "wide": false
+  },
+  {
+   "id": "ui",
+   "ref": "U1",
+   "label": "Streamlit UI",
+   "row": "interface",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Screens and the composition root: picks the live, mock or recording transport. Public-content checkbox on typed scenarios and decks.",
+   "modules": [
+    "app"
+   ],
+   "tools": [
+    "main",
+    "render_learn",
+    "render_presentation",
+    "render_roleplay",
+    "render_accuracy",
+    "_public_content_confirmed",
+    "_render_review_panel"
+   ],
+   "decisions": [
+    2,
+    4,
+    6
+   ],
+   "wide": false
+  },
+  {
+   "id": "api",
+   "ref": "U2",
+   "label": "FastAPI API",
+   "row": "interface",
+   "status": "planned",
+   "kind": "code",
+   "phase": "Phase 3",
+   "description": "Stateless HTTP API; Streamlit becomes a thin client of it.",
+   "modules": [],
+   "tools": [],
+   "decisions": [
+    4
+   ],
+   "wide": false
+  },
+  {
+   "id": "facade",
+   "ref": "U3",
+   "label": "Generation service",
+   "row": "application",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "LessonGenerationService wires one gateway and the language toolkit into the three features. Stable import path for the app.",
+   "modules": [
+    "generation"
+   ],
+   "tools": [
+    "LessonGenerationService"
+   ],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "records",
+   "ref": "U4",
+   "label": "Learning records",
+   "row": "application",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Persists answers as evidence and writes progress computed by the pure policy. Practice answers are logged with is_graded = false.",
+   "modules": [
+    "lesson"
+   ],
+   "tools": [
+    "LessonService.submit_answer",
+    "LessonService.submit_retry_answer",
+    "LessonService.start_due_review",
+    "LessonService.complete_lesson"
+   ],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "profiles",
+   "ref": "U5",
+   "label": "Profiles & accounts",
+   "row": "application",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Local demo accounts (Argon2id) and learner profiles. SSO can replace accounts behind an identity boundary later.",
+   "modules": [
+    "profile",
+    "auth"
+   ],
+   "tools": [
+    "ProfileService",
+    "AuthenticationService"
+   ],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "review",
+   "ref": "U6",
+   "label": "Accuracy review",
+   "row": "application",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Reviewer-mode verdicts on lines, items and questions, with snapshots and versions; error rate by kind, key source and reason.",
+   "modules": [
+    "review"
+   ],
+   "tools": [
+    "ReviewService.record",
+    "ReviewService.report",
+    "review_targets"
+   ],
+   "decisions": [
+    9
+   ],
+   "wide": false
+  },
+  {
+   "id": "settings",
+   "ref": "U7",
+   "label": "Settings",
+   "row": "application",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Environment-only configuration (JLT_*): model, LLM mode live/mock/record, reviewer mode.",
+   "modules": [
+    "settings"
+   ],
+   "tools": [
+    "Settings",
+    "get_settings"
+   ],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "worker",
+   "ref": "U8",
+   "label": "Job worker",
+   "row": "application",
+   "status": "planned",
+   "kind": "code",
+   "phase": "Phase 3",
+   "description": "Runs slow model calls from a PostgreSQL queue so the UI never blocks; shared concurrency cap and stale-job sweep.",
+   "modules": [],
+   "tools": [],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "f_lessons",
+   "ref": "U9",
+   "label": "Lessons",
+   "row": "features",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Content first, then a quiz. Target items derived from explained points; keys verified; difficulty gated.",
+   "modules": [
+    "features.lessons"
+   ],
+   "tools": [
+    "LessonGenerator.generate_lesson_content",
+    "LessonGenerator.generate_quiz",
+    "_verify_keys",
+    "_gate_difficulty",
+    "canonical_item_id"
+   ],
+   "decisions": [
+    1,
+    3
+   ],
+   "wide": false
+  },
+  {
+   "id": "f_roleplay",
+   "ref": "U10",
+   "label": "Roleplay (beta)",
+   "row": "features",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Challenge brief and rubric feedback. No stored pass/fail; the learner self-checks readiness.",
+   "modules": [
+    "features.roleplay"
+   ],
+   "tools": [
+    "RoleplayCoach.generate_situation_challenge",
+    "RoleplayCoach.judge_roleplay"
+   ],
+   "decisions": [
+    6
+   ],
+   "wide": false
+  },
+  {
+   "id": "f_presentation",
+   "ref": "U11",
+   "label": "Deck localizer & delivery",
+   "row": "features",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Localize a public deck slide by slide, review its flow, coach delivery (feedback only).",
+   "modules": [
+    "features.presentation"
+   ],
+   "tools": [
+    "PresentationCoach.localize_deck",
+    "PresentationCoach.coach_deck_delivery",
+    "PresentationCoach.judge_delivery"
+   ],
+   "decisions": [
+    1,
+    2,
+    6
+   ],
+   "wide": false
+  },
+  {
+   "id": "f_translation",
+   "ref": "U12",
+   "label": "Translation",
+   "row": "features",
+   "status": "planned",
+   "kind": "code",
+   "phase": "v1 scope",
+   "description": "Natural and learning versions of public English text. The hackathon page is only a placeholder.",
+   "modules": [],
+   "tools": [],
+   "decisions": [
+    1
+   ],
+   "wide": false
+  },
+  {
+   "id": "f_placement",
+   "ref": "U13",
+   "label": "Placement",
+   "row": "features",
+   "status": "planned",
+   "kind": "code",
+   "phase": "v1 scope",
+   "description": "Deterministic bracketing staircase over code-verified items per strand.",
+   "modules": [],
+   "tools": [],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "f_documents",
+   "ref": "U14",
+   "label": "Document upload",
+   "row": "features",
+   "status": "on_hold",
+   "kind": "code",
+   "phase": null,
+   "description": "Needs private data to stay on-prem (PRIVATE tasks).",
+   "modules": [],
+   "tools": [],
+   "decisions": [
+    2
+   ],
+   "wide": false
+  },
+  {
+   "id": "prompts",
+   "ref": "U15",
+   "label": "Prompts",
+   "row": "contracts",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Pure prompt builders with PROMPT_VERSION; 115 snapshot tests pin the wording.",
+   "modules": [
+    "prompts.lessons",
+    "prompts.roleplay",
+    "prompts.presentation"
+   ],
+   "tools": [
+    "lessons-v1",
+    "roleplay-v1",
+    "presentation-v1"
+   ],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "schemas",
+   "ref": "U16",
+   "label": "Response schemas",
+   "row": "contracts",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Pydantic contracts the model must satisfy before anything renders.",
+   "modules": [
+    "schemas.lessons",
+    "schemas.roleplay",
+    "schemas.presentation"
+   ],
+   "tools": [
+    "GeneratedConversationResponse",
+    "GeneratedQuizPackage",
+    "SituationChallenge",
+    "SlideLocalization"
+   ],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "gateway",
+   "ref": "U17",
+   "label": "LLM gateway",
+   "row": "contracts",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "The single path for every model call: phase routing, repair, fallback, hedging. Every task tagged PUBLIC or PRIVATE; PRIVATE refused on external transports.",
+   "modules": [
+    "llm.gateway"
+   ],
+   "tools": [
+    "LLMGateway.generate_validated",
+    "provider_label"
+   ],
+   "decisions": [
+    2
+   ],
+   "wide": false
+  },
+  {
+   "id": "core",
+   "ref": "U18",
+   "label": "Domain core",
+   "row": "core",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "No IO, UI, database or SDK imports (import-linter). Items and questions, learner and inputs, progress policy t05-v1 with replay, key verification, difficulty, ports.",
+   "modules": [
+    "core.items",
+    "core.learner",
+    "core.inputs",
+    "core.progress",
+    "core.verification",
+    "core.difficulty",
+    "core.language",
+    "core.ports",
+    "core.errors",
+    "core.japanese"
+   ],
+   "tools": [
+    "SM2MasteryPolicy",
+    "replay",
+    "verify_question",
+    "measure",
+    "KeySource",
+    "DataClass",
+    "LanguageToolkit",
+    "ModelTransport"
+   ],
+   "decisions": [
+    3,
+    5
+   ],
+   "wide": true
+  },
+  {
+   "id": "openai",
+   "ref": "U19",
+   "label": "OpenAI transport",
+   "row": "adapters",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "OpenAI-compatible chat completions with strict JSON schema output.",
+   "modules": [
+    "llm.openai_transport"
+   ],
+   "tools": [
+    "OpenAICompatibleTransport",
+    "extract_json_text"
+   ],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "mock",
+   "ref": "U20",
+   "label": "Mock & recording",
+   "row": "adapters",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Replays hand-checked fixtures offline; records live PUBLIC responses to JSONL.",
+   "modules": [
+    "llm.mock"
+   ],
+   "tools": [
+    "MockTransport",
+    "RecordingTransport"
+   ],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "toolkit",
+   "ref": "U21",
+   "label": "Language toolkit",
+   "row": "adapters",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Tokenizer, readings, dictionary forms, JLPT levels and grammar points from reference data, never from the model.",
+   "modules": [
+    "language.sudachi_toolkit",
+    "resources"
+   ],
+   "tools": [
+    "SudachiToolkit.tokenize",
+    "lemma",
+    "lookup",
+    "readings",
+    "grammar_point"
+   ],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "db",
+   "ref": "U22",
+   "label": "Database layer",
+   "row": "adapters",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "SQLAlchemy models and Alembic migrations (head 0008: is_graded, content_reviews).",
+   "modules": [
+    "models",
+    "database"
+   ],
+   "tools": [
+    "ReviewAttempt",
+    "UserItemProgress",
+    "ContentReview",
+    "create_database_engine"
+   ],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "tsuzumi",
+   "ref": "U23",
+   "label": "On-prem model adapter",
+   "row": "adapters",
+   "status": "on_hold",
+   "kind": "code",
+   "phase": null,
+   "description": "tsuzumi 2 or an open model on vLLM; the only transport allowed to accept PRIVATE tasks.",
+   "modules": [],
+   "tools": [],
+   "decisions": [
+    2
+   ],
+   "wide": false
+  },
+  {
+   "id": "openai_api",
+   "ref": "J1",
+   "label": "OpenAI API",
+   "row": "external",
+   "status": "built",
+   "kind": "external",
+   "phase": null,
+   "description": "External; receives PUBLIC content only.",
+   "modules": [],
+   "tools": [],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "refdata",
+   "ref": "J2",
+   "label": "Reference data",
+   "row": "external",
+   "status": "built",
+   "kind": "external",
+   "phase": null,
+   "description": "SudachiDict-core 20261015, OpenJLPT 0.1.0 (alpha, known errors), jlpt_overrides_v1, grammar_points_v1.",
+   "modules": [],
+   "tools": [],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "sqlite",
+   "ref": "J3",
+   "label": "SQLite",
+   "row": "external",
+   "status": "built",
+   "kind": "external",
+   "phase": null,
+   "description": "Local file database for now.",
+   "modules": [],
+   "tools": [],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "postgres",
+   "ref": "J4",
+   "label": "PostgreSQL",
+   "row": "external",
+   "status": "planned",
+   "kind": "external",
+   "phase": "Phase 3",
+   "description": "Shared database and job queue for the pilot.",
+   "modules": [],
+   "tools": [],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "tests",
+   "ref": "T1",
+   "label": "Tests & import contracts",
+   "row": "tooling",
+   "status": "built",
+   "kind": "tool",
+   "phase": null,
+   "description": "296 tests on MockLLM, 4 import-linter contracts, prompt snapshots, this graph's own check.",
+   "modules": [],
+   "tools": [],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "golden",
+   "ref": "T2",
+   "label": "Golden set & fixtures",
+   "row": "tooling",
+   "status": "built",
+   "kind": "tool",
+   "phase": null,
+   "description": "evals/golden/v0.json (56 public cases) and fixtures/llm built by scripts/build_mock_fixtures.py.",
+   "modules": [],
+   "tools": [],
+   "decisions": [],
+   "wide": false
+  },
+  {
+   "id": "sheets",
+   "ref": "T3",
+   "label": "Review sheet scripts",
+   "row": "tooling",
+   "status": "built",
+   "kind": "tool",
+   "phase": null,
+   "description": "export_review_sheet.py (golden set to Excel CSV) and score_review_sheet.py (error rates vs target).",
+   "modules": [],
+   "tools": [],
+   "decisions": [
+    9
+   ],
+   "wide": false
+  },
+  {
+   "id": "evals",
+   "ref": "T4",
+   "label": "Eval runner in CI",
+   "row": "tooling",
+   "status": "planned",
+   "kind": "tool",
+   "phase": "Phase 4",
+   "description": "Nightly golden-set run on the real model with rubric scores reported as kappa against human labels.",
+   "modules": [],
+   "tools": [],
+   "decisions": [],
+   "wide": false
+  }
+ ],
+ "edges": [
+  {
+   "source": "ui",
+   "target": "profiles",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "ui",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "ui",
+   "target": "db",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "ui",
+   "target": "facade",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "ui",
+   "target": "records",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "ui",
+   "target": "mock",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "ui",
+   "target": "openai",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "ui",
+   "target": "prompts",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "ui",
+   "target": "review",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "ui",
+   "target": "settings",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "profiles",
+   "target": "db",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "profiles",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "db",
+   "target": "settings",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_lessons",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_lessons",
+   "target": "gateway",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_lessons",
+   "target": "prompts",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_lessons",
+   "target": "schemas",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_presentation",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_presentation",
+   "target": "gateway",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_presentation",
+   "target": "prompts",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_presentation",
+   "target": "schemas",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_roleplay",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_roleplay",
+   "target": "gateway",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_roleplay",
+   "target": "prompts",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_roleplay",
+   "target": "schemas",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "facade",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "facade",
+   "target": "f_lessons",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "facade",
+   "target": "f_presentation",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "facade",
+   "target": "f_roleplay",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "facade",
+   "target": "toolkit",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "facade",
+   "target": "gateway",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "facade",
+   "target": "openai",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "facade",
+   "target": "schemas",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "toolkit",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "records",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "records",
+   "target": "db",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "records",
+   "target": "schemas",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "gateway",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "mock",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "prompts",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "prompts",
+   "target": "schemas",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "review",
+   "target": "records",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "review",
+   "target": "db",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "schemas",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "learner",
+   "target": "ui",
+   "kind": "uses",
+   "label": "learns"
+  },
+  {
+   "source": "reviewer",
+   "target": "ui",
+   "kind": "uses",
+   "label": "reviewer mode"
+  },
+  {
+   "source": "openai",
+   "target": "core",
+   "kind": "implements",
+   "label": "ModelTransport"
+  },
+  {
+   "source": "tsuzumi",
+   "target": "core",
+   "kind": "implements",
+   "label": "ModelTransport, accepts PRIVATE"
+  },
+  {
+   "source": "openai",
+   "target": "openai_api",
+   "kind": "calls",
+   "label": "HTTPS, PUBLIC only"
+  },
+  {
+   "source": "toolkit",
+   "target": "refdata",
+   "kind": "reads",
+   "label": "local files"
+  },
+  {
+   "source": "db",
+   "target": "sqlite",
+   "kind": "stores",
+   "label": ""
+  },
+  {
+   "source": "db",
+   "target": "postgres",
+   "kind": "planned",
+   "label": "Phase 3"
+  },
+  {
+   "source": "api",
+   "target": "facade",
+   "kind": "planned",
+   "label": ""
+  },
+  {
+   "source": "worker",
+   "target": "facade",
+   "kind": "planned",
+   "label": ""
+  },
+  {
+   "source": "worker",
+   "target": "postgres",
+   "kind": "planned",
+   "label": "job queue"
+  },
+  {
+   "source": "ui",
+   "target": "api",
+   "kind": "planned",
+   "label": "thin client"
+  },
+  {
+   "source": "f_translation",
+   "target": "gateway",
+   "kind": "planned",
+   "label": ""
+  },
+  {
+   "source": "f_placement",
+   "target": "records",
+   "kind": "planned",
+   "label": ""
+  },
+  {
+   "source": "f_documents",
+   "target": "tsuzumi",
+   "kind": "planned",
+   "label": "PRIVATE"
+  },
+  {
+   "source": "sheets",
+   "target": "golden",
+   "kind": "reads",
+   "label": ""
+  },
+  {
+   "source": "sheets",
+   "target": "facade",
+   "kind": "uses",
+   "label": ""
+  },
+  {
+   "source": "golden",
+   "target": "mock",
+   "kind": "feeds",
+   "label": ""
+  },
+  {
+   "source": "evals",
+   "target": "golden",
+   "kind": "planned",
+   "label": ""
+  }
+ ],
+ "changelog": [
+  {
+   "date": "2026-10-24",
+   "commit": "3924de8",
+   "title": "Phase 2d-e: public-content checkbox, feedback-only practice, accuracy review tools",
+   "blocks": [
+    "ui",
+    "review",
+    "sheets",
+    "db"
+   ]
+  },
+  {
+   "date": "2026-10-24",
+   "commit": "2dffad3",
+   "title": "Phase 2a-c: language toolkit, code-verified keys, difficulty gate",
+   "blocks": [
+    "toolkit",
+    "refdata",
+    "core",
+    "f_lessons",
+    "records",
+    "db"
+   ]
+  },
+  {
+   "date": "2026-10-24",
+   "commit": "da56d11",
+   "title": "Phase 1: split into core, schemas, prompts, gateway and features",
+   "blocks": [
+    "core",
+    "schemas",
+    "prompts",
+    "gateway",
+    "f_lessons",
+    "f_roleplay",
+    "f_presentation",
+    "facade"
+   ]
+  },
+  {
+   "date": "2026-10-24",
+   "commit": "0507494",
+   "title": "Phase 0: offline mock mode, recording transport, golden set v0",
+   "blocks": [
+    "mock",
+    "golden",
+    "settings"
+   ]
+  }
+ ],
+ "decisions": {
+  "1": "v1 scope",
+  "2": "Public content only; PRIVATE tasks on hold",
+  "3": "Grade only code-verified keys",
+  "4": "Streamlit as thin client",
+  "5": "SM-2 now, replayable",
+  "6": "Roleplay feedback only",
+  "7": "Pilot 20-30 users",
+  "8": "Refactor on v2 branch",
+  "9": "Trust layer before scale; team review"
+ }
+}
