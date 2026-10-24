@@ -1138,7 +1138,7 @@
  "changelog": [
   {
    "date": "2026-10-24",
-   "commit": "73bfb7b",
+   "commit": "b59c222",
    "title": "Reference data: tanos JLPT lists primary, OpenJLPT as gap fill, Business Japanese list; difficulty counts workplace words as in section",
    "blocks": [
     "toolkit",
