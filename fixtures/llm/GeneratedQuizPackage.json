@@ -19,7 +19,7 @@
         },
         {
           "question_id": "q-temoii-cloze",
-          "item_id": "grammar:e84fb07c3d40cd68",
+          "item_id": "grammar:te-mo-ii",
           "form": "contextual_cloze",
           "prompt": "Choose the ending that asks permission: 時間を変え___。",
           "options": [
@@ -33,7 +33,7 @@
         },
         {
           "question_id": "q-wadou-meaning",
-          "item_id": "grammar:8167197404f1550b",
+          "item_id": "grammar:wa-dou-desu-ka",
           "form": "meaning",
           "prompt": "What does 〜はどうですか do in 午後三時からはどうですか。?",
           "options": [
@@ -61,7 +61,7 @@
         },
         {
           "question_id": "q-teoku-cloze",
-          "item_id": "grammar:243367c0ea060b4c",
+          "item_id": "grammar:te-oku",
           "form": "contextual_cloze",
           "prompt": "Choose the ending that means 'get ready in advance': それまでに準備し___。",
           "options": [
@@ -105,7 +105,7 @@
         },
         {
           "question_id": "r-temoii-meaning",
-          "item_id": "grammar:e84fb07c3d40cd68",
+          "item_id": "grammar:te-mo-ii",
           "form": "meaning",
           "prompt": "What does 〜てもいいですか express?",
           "options": [
@@ -119,7 +119,7 @@
         },
         {
           "question_id": "r-wadou-cloze",
-          "item_id": "grammar:8167197404f1550b",
+          "item_id": "grammar:wa-dou-desu-ka",
           "form": "contextual_cloze",
           "prompt": "Choose the ending that proposes a time: 明日の十時___。",
           "options": [
@@ -147,7 +147,7 @@
         },
         {
           "question_id": "r-teoku-meaning",
-          "item_id": "grammar:243367c0ea060b4c",
+          "item_id": "grammar:te-oku",
           "form": "meaning",
           "prompt": "What does 〜ておきます add to 準備します?",
           "options": [

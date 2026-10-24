@@ -13,7 +13,8 @@ import hashlib
 
 from pydantic import BaseModel, ValidationError
 
-from ..core.errors import GenerationError
+from ..core.difficulty import DifficultyReport, measure
+from ..core.errors import ContractViolation, GenerationError
 from ..core.inputs import DEFAULT_LINE_COUNT, ScenarioInput, ScenarioMode, expected_line_count
 from ..core.items import (
     FixtureItem,
@@ -23,10 +24,12 @@ from ..core.items import (
     LessonLineExplanation,
     QuestionForm,
 )
+from ..core.language import LanguageToolkit, jlpt_label, to_hiragana
 from ..core.japanese import contains_japanese, contains_kanji, is_japanese_name, is_kana_only, is_non_japanese_name
 from ..core.learner import JapaneseLevel, ProfileRecord
 from ..core.ports import DataClass
 from ..core.progress import ProgressRecord
+from ..core.verification import verify_questions
 from ..llm.gateway import LLMGateway
 from ..prompts import lessons as prompts
 from ..schemas.lessons import (
@@ -114,15 +117,49 @@ def _dedupe_line_explanations(
     return tuple(deduped)
 
 
-def canonical_item_id(category: ItemCategory, expression: str) -> str:
-    """Return a stable ID that never stores lesson text in the local database."""
+def canonical_item_id(
+    category: ItemCategory, expression: str, toolkit: LanguageToolkit | None = None
+) -> str:
+    """Return a stable ID that never stores lesson text in the local database.
 
+    With a toolkit, grammar points map to their curated ID and words to their
+    dictionary form, so 連絡します and 連絡 share one item. A word already in
+    dictionary form hashes exactly as before, so existing evidence still matches.
+    """
+
+    if toolkit is not None:
+        if category is ItemCategory.GRAMMAR:
+            point = toolkit.grammar_point(expression)
+            if point is not None:
+                return f"grammar:{point.id}"
+        else:
+            expression = toolkit.lemma(expression)
     digest = hashlib.sha256(expression.encode("utf-8")).hexdigest()[:16]
     return f"{category.value}:{digest}"
 
 
+def _reference(category: ItemCategory, expression: str, model_reading: str, toolkit: LanguageToolkit):
+    """Level and reading from reference data; absence stays absent (never guessed)."""
+
+    if category is ItemCategory.GRAMMAR:
+        point = toolkit.grammar_point(expression)
+        if point is None:
+            return None, "unrated", 0.0, model_reading
+        return jlpt_label(point.level), point.provenance, 0.8, model_reading
+    entry = toolkit.lookup(expression)
+    accepted = toolkit.readings(expression)
+    reading = model_reading
+    if accepted and to_hiragana(model_reading) not in accepted:
+        # Derived furigana: the dictionary reading replaces a reading it does not accept.
+        reading = sorted(entry.readings)[0] if entry and entry.readings else sorted(accepted)[0]
+    if entry is None or entry.level is None:
+        return None, "unrated", 0.0, reading
+    return jlpt_label(entry.level), entry.provenance, 0.8, reading
+
+
 def _select_target_items(
     explained_lines: Sequence[tuple["GeneratedLine", str]],
+    toolkit: LanguageToolkit,
 ) -> tuple[FixtureItem, ...]:
     """Derive 3-7 unique quiz targets from the language points the model already explained."""
 
@@ -137,22 +174,27 @@ def _select_target_items(
         ):
             for point in points:
                 expression = point.expression.strip()
-                canonical_id = canonical_item_id(category, expression)
-                if canonical_id in seen or not contains_japanese(expression):
+                if not contains_japanese(expression):
+                    continue
+                canonical_id = canonical_item_id(category, expression, toolkit)
+                if canonical_id in seen:
                     continue
                 seen.add(canonical_id)
+                level, provenance, confidence, reading = _reference(
+                    category, expression, point.reading, toolkit
+                )
                 candidates.append(
                     (
                         FixtureItem(
                             canonical_id=canonical_id,
                             category=category,
                             expression=expression,
-                            reading=point.reading,
+                            reading=reading,
                             meaning=point.meaning,
                             example=example,
-                            jlpt_level=point.jlpt_level,
-                            jlpt_provenance="model-estimate",
-                            jlpt_confidence=0.6,
+                            jlpt_level=level,
+                            jlpt_provenance=provenance,
+                            jlpt_confidence=confidence,
                         ),
                         point.is_quiz_target,
                     )
@@ -235,9 +277,11 @@ class LessonGenerator:
     def __init__(
         self,
         gateway: LLMGateway,
+        toolkit: LanguageToolkit,
         parallel_explanations: bool = False,
         explanation_workers: int = 4,
     ) -> None:
+        self._toolkit = toolkit
         # v1 accepts only generic or user-attested public text (decision 2), so every
         # lesson task is PUBLIC. Private documents would need a separate PRIVATE task.
         self._run = partial(
@@ -269,7 +313,10 @@ class LessonGenerator:
                 scenario_input, profile, learning_history, recent_topic_ids, line_count
             )
             return GeneratedLessonDraft(
-                package.lesson, package.line_explanations, provider_name
+                package.lesson,
+                package.line_explanations,
+                provider_name,
+                self._difficulty(package.lesson, profile, learning_history),
             )
         package, provider_name = self._run(
             GeneratedExplanationResponse
@@ -281,12 +328,18 @@ class LessonGenerator:
             ),
             "lesson_content",
             "We could not generate valid lesson content. Your scenario is still here; please retry.",
-            lambda response: self._finalize_content(
-                response, scenario_input, line_count
+            lambda response: self._gate_difficulty(
+                self._finalize_content(response, scenario_input, line_count, self._toolkit),
+                scenario_input,
+                profile,
+                learning_history,
             ),
         )
         return GeneratedLessonDraft(
-            package.lesson, package.line_explanations, provider_name
+            package.lesson,
+            package.line_explanations,
+            provider_name,
+            self._difficulty(package.lesson, profile, learning_history),
         )
 
     def generate_quiz(
@@ -296,7 +349,7 @@ class LessonGenerator:
     ) -> GeneratedQuiz:
         def finalize(package: GeneratedQuizPackage) -> GeneratedQuizPackage:
             self._validate_quiz_contract(package, content)
-            return package
+            return self._verify_keys(package, content, self._toolkit)
 
         package, provider_name = self._run(
             GeneratedQuizPackage,
@@ -365,7 +418,12 @@ class LessonGenerator:
             response = GeneratedConversationResponse(
                 **header.model_dump(exclude={"lines"}), lines=lines
             )
-        package = self._finalize_content(response, scenario_input, line_count)
+        package = self._gate_difficulty(
+            self._finalize_content(response, scenario_input, line_count, self._toolkit),
+            scenario_input,
+            profile,
+            learning_history,
+        )
         return package, provider_name
 
     def _explain_lines(
@@ -441,17 +499,82 @@ class LessonGenerator:
         )
         return package.model_copy(update={"lesson": content})
 
+    MIN_GRADED_QUESTIONS = 2
+
+    @staticmethod
+    def _verify_keys(
+        package: GeneratedQuizPackage, content: LessonContent, toolkit: LanguageToolkit
+    ) -> GeneratedQuizPackage:
+        """Grade only keys code can confirm; keep the rest as practice (decision 3)."""
+
+        questions = verify_questions(package.questions, content, toolkit)
+        graded = sum(question.graded for question in questions)
+        if graded < LessonGenerator.MIN_GRADED_QUESTIONS:
+            raise ContractViolation(
+                f"Only {graded} of {len(questions)} questions could be checked. Base most "
+                "questions on the passage: a reading question whose answer is the dictionary "
+                "reading, a meaning question whose answer matches the item's meaning, or a "
+                "contextual_cloze whose blank hides the target item in a sentence copied "
+                "exactly from the passage."
+            )
+        return package.model_copy(
+            update={
+                "questions": questions,
+                "retry_questions": verify_questions(package.retry_questions, content, toolkit),
+            }
+        )
+
+    def _difficulty(
+        self,
+        content: LessonContent,
+        profile: ProfileRecord,
+        learning_history: Sequence[ProgressRecord],
+    ) -> DifficultyReport:
+        mastered = {
+            record.item_id for record in learning_history if record.mastery_score >= 0.8
+        }
+
+        def is_mastered(lemma: str) -> bool:
+            return any(
+                canonical_item_id(category, lemma, self._toolkit) in mastered
+                for category in (ItemCategory.KANJI, ItemCategory.VOCABULARY)
+            )
+
+        level = profile.estimated_working_level or profile.declared_level
+        return measure(content.passage, level, self._toolkit, is_mastered)
+
+    def _gate_difficulty(
+        self,
+        package: GeneratedLessonContentPackage,
+        scenario_input: ScenarioInput,
+        profile: ProfileRecord,
+        learning_history: Sequence[ProgressRecord],
+    ) -> GeneratedLessonContentPackage:
+        """Reject a generated passage that is far above the learner (not the learner's own text)."""
+
+        if scenario_input.mode is ScenarioMode.EXPLAIN:
+            return package
+        report = self._difficulty(package.lesson, profile, learning_history)
+        if report.too_hard:
+            raise ContractViolation(
+                f"{round(report.stretch_share * 100)}% of the words are above the learner's "
+                f"level ({report.learner_level}). Replace these with simpler words: "
+                + "、".join(report.stretch_words[:10])
+            )
+        return package
+
     @classmethod
     def _finalize_content(
         cls,
         response: BaseModel,
         scenario_input: ScenarioInput,
-        line_count: int = DEFAULT_LINE_COUNT,
+        line_count: int,
+        toolkit: LanguageToolkit,
     ) -> GeneratedLessonContentPackage:
         if isinstance(response, GeneratedExplanationResponse):
-            package = cls._explanation_package(response, scenario_input.scenario)
+            package = cls._explanation_package(response, scenario_input.scenario, toolkit)
         elif isinstance(response, GeneratedConversationResponse):
-            package = cls._conversation_package(response)
+            package = cls._conversation_package(response, toolkit)
         else:
             raise TypeError("Unsupported lesson content response.")
         cls._validate_content_mode(package, scenario_input, line_count)
@@ -460,6 +583,7 @@ class LessonGenerator:
     @staticmethod
     def _conversation_package(
         response: GeneratedConversationResponse,
+        toolkit: LanguageToolkit,
     ) -> GeneratedLessonContentPackage:
         speakers = (
             f"{response.japanese_speaker_name}さん",
@@ -479,19 +603,19 @@ class LessonGenerator:
             lesson=_lesson_content(
                 response,
                 "\n".join(line.japanese_text for line in line_explanations),
-                _select_target_items([(line, text) for line, text, _ in dialogue]),
+                _select_target_items([(line, text) for line, text, _ in dialogue], toolkit),
             ),
             line_explanations=line_explanations,
         )
 
     @staticmethod
     def _explanation_package(
-        response: GeneratedExplanationResponse, scenario: str
+        response: GeneratedExplanationResponse, scenario: str, toolkit: LanguageToolkit
     ) -> GeneratedLessonContentPackage:
         explained_lines = [(line, line.japanese_text.strip()) for line in response.lines]
         return GeneratedLessonContentPackage(
             lesson=_lesson_content(
-                response, scenario, _select_target_items(explained_lines)
+                response, scenario, _select_target_items(explained_lines, toolkit)
             ),
             line_explanations=_dedupe_line_explanations(
                 tuple(_line_explanation(line, text) for line, text in explained_lines)

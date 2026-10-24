@@ -27,6 +27,7 @@ from .core.ports import ModelTransport
 from .llm.mock import MockTransport, RecordingTransport
 from .llm.openai_transport import OpenAICompatibleTransport
 from .lesson import (
+    FixtureQuestion,
     ActiveLesson,
     ActiveLessonDraft,
     ActiveReview,
@@ -145,6 +146,13 @@ def _glossary(
                     entries[key] = (label, point, [])
                 entries[key][2].append(number)
     return list(entries.values())
+
+
+def _question_caption(question: FixtureQuestion) -> str:
+    form = question.form.value.replace("_", " ").title()
+    if question.graded:
+        return form
+    return f"{form} · Practice: the answer could not be checked automatically, so it does not count toward progress"
 
 
 @st.cache_resource
@@ -755,7 +763,7 @@ def render_learn(
     items_by_id = {item.canonical_id: item for item in lesson.items}
     for number, question in enumerate(lesson.questions, start=1):
         st.markdown(f"**{number}. {question.prompt}**")
-        st.caption(question.form.value.replace("_", " ").title())
+        st.caption(_question_caption(question))
         if question.form is QuestionForm.CONTEXTUAL_CLOZE:
             source_item = items_by_id.get(question.item_id)
             if source_item is not None:
@@ -821,7 +829,7 @@ def render_learn(
             if missed is not None:
                 st.info(f"Before you retry: {missed.explanation}")
             st.markdown(f"**Retry {number}. {retry.prompt}**")
-            st.caption(retry.form.value.replace("_", " ").title())
+            st.caption(_question_caption(retry))
             retry_key = f"lesson_retry_{active.lesson_session_id}_{retry.question_id}"
             retried = retry.question_id in retry_results
             selected_retry = st.radio(

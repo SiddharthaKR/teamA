@@ -20,6 +20,7 @@ from japanese_workplace_tutor.generation import (
     expected_line_count,
 )
 from japanese_workplace_tutor.features.lessons import LessonGenerator, canonical_item_id
+from japanese_workplace_tutor.language.sudachi_toolkit import SudachiToolkit
 from japanese_workplace_tutor.lesson import LessonService
 from japanese_workplace_tutor.prompts import lessons as lesson_prompts
 from japanese_workplace_tutor.schemas.lessons import validate_explanations
@@ -398,8 +399,9 @@ DIALOGUE_TEXTS = (
     "では、よろしくお願いします。",
     "はい、よろしくお願いします。",
 )
+TOOLKIT = SudachiToolkit.shared()
 TARGET_ITEM_IDS = tuple(
-    canonical_item_id(category, expression)
+    canonical_item_id(category, expression, TOOLKIT)
     for category, expression in (
         (ItemCategory.VOCABULARY, "仕様"),
         (ItemCategory.GRAMMAR, "〜てもよろしいでしょうか"),
@@ -474,13 +476,14 @@ def quiz_payload() -> dict[str, object]:
 
 def conversation_quiz_payload() -> dict[str, object]:
     payload = quiz_payload()
-    remapped = dict(
-        zip(
-            (item["canonical_id"] for item in VALID_PAYLOAD["lesson"]["items"]),
-            TARGET_ITEM_IDS,
-            strict=True,
+    # Map by expression, not position: the item order differs between the two
+    # payloads, and code verification caught questions attached to the wrong item.
+    remapped = {
+        item["canonical_id"]: canonical_item_id(
+            ItemCategory(item["category"]), item["expression"], TOOLKIT
         )
-    )
+        for item in VALID_PAYLOAD["lesson"]["items"]
+    }
     for question in (*payload["questions"], *payload["retry_questions"]):
         question["item_id"] = remapped[question["item_id"]]
     return payload

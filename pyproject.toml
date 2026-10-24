@@ -17,6 +17,9 @@ dependencies = [
     "requests==2.34.2",
     "SQLAlchemy==2.0.52",
     "streamlit==1.62.0",
+    "SudachiPy==0.7.0",
+    "SudachiDict-core==20261015",
+    "openjlpt==0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -26,6 +29,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"japanese_workplace_tutor.resources" = ["*.json"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
@@ -48,6 +54,7 @@ forbidden_modules = [
     "japanese_workplace_tutor.lesson", "japanese_workplace_tutor.profile",
     "japanese_workplace_tutor.models", "japanese_workplace_tutor.database",
     "japanese_workplace_tutor.auth", "japanese_workplace_tutor.settings",
+    "japanese_workplace_tutor.language", "sudachipy", "openjlpt",
 ]
 
 [[tool.importlinter.contracts]]
@@ -62,7 +69,8 @@ forbidden_modules = [
     "japanese_workplace_tutor.llm.openai_transport", "japanese_workplace_tutor.llm.mock",
     "japanese_workplace_tutor.app", "japanese_workplace_tutor.models",
     "japanese_workplace_tutor.database", "japanese_workplace_tutor.lesson",
-    "japanese_workplace_tutor.profile",
+    "japanese_workplace_tutor.profile", "japanese_workplace_tutor.language",
+    "sudachipy", "openjlpt",
 ]
 
 [[tool.importlinter.contracts]]

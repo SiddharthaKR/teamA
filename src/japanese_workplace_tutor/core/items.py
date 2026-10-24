@@ -5,6 +5,7 @@ from hashlib import sha256
 from random import Random
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 
 class ItemCategory(StrEnum):
@@ -39,6 +40,14 @@ class ReviewOutcome(StrEnum):
     EASY = "easy"
 
 
+class KeySource(StrEnum):
+    """Who vouches for a question's answer key."""
+
+    CURATED = "curated"  # written and checked by a person (fixture and review items)
+    DERIVED = "derived"  # confirmed by code against the passage or reference data
+    UNVERIFIED = "unverified"  # model-written and not checkable: practice only, never graded
+
+
 class FixtureItem(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -69,6 +78,13 @@ class FixtureQuestion(BaseModel):
     # Excluded from serialization so it never lands in a persisted dump.
     correct_value: str | None = Field(default=None, exclude=True)
     explanation: str = Field(min_length=1)
+    # Set by the application after verification, never by the model: the field is
+    # hidden from the JSON schema sent to the model and overwritten on finalize.
+    key_source: SkipJsonSchema[KeySource] = KeySource.CURATED
+
+    @property
+    def graded(self) -> bool:
+        return self.key_source is not KeySource.UNVERIFIED
 
     @model_validator(mode="before")
     @classmethod

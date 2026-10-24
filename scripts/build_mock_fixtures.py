@@ -32,6 +32,7 @@ from japanese_workplace_tutor.generation import (  # noqa: E402
     canonical_item_id,
     expected_line_count,
 )
+from japanese_workplace_tutor.language.sudachi_toolkit import SudachiToolkit  # noqa: E402
 from japanese_workplace_tutor.lesson import ItemCategory  # noqa: E402
 from japanese_workplace_tutor.llm.mock import MockTransport  # noqa: E402
 from japanese_workplace_tutor.profile import (  # noqa: E402
@@ -142,7 +143,8 @@ TARGETS = {
     "teoku": (ItemCategory.GRAMMAR, "〜ておきます"),
     "renraku": (ItemCategory.KANJI, "連絡"),
 }
-ID = {key: canonical_item_id(category, expression) for key, (category, expression) in TARGETS.items()}
+TOOLKIT = SudachiToolkit.shared()
+ID = {key: canonical_item_id(category, expression, TOOLKIT) for key, (category, expression) in TARGETS.items()}
 
 
 def question(qid, key, form, prompt, options, explanation):

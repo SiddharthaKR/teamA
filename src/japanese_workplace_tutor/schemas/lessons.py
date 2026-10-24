@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from ..core.difficulty import DifficultyReport
 from ..core.items import FixtureQuestion, LessonContent, LessonLineExplanation
 from ..core.japanese import contains_japanese, is_japanese_name, is_non_japanese_name
 
@@ -326,6 +327,7 @@ class GeneratedLessonDraft:
     content: LessonContent
     line_explanations: tuple[LessonLineExplanation, ...]
     provider_name: str
+    difficulty: DifficultyReport | None = None
 
 
 @dataclass(frozen=True)

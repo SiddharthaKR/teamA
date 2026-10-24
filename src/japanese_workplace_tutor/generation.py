@@ -24,12 +24,14 @@ from .core.inputs import (
     expected_line_count,
 )
 from .core.items import LessonContent
+from .core.language import LanguageToolkit
 from .core.learner import ProfileRecord
 from .core.ports import DataClass, ModelTransport
 from .core.progress import ProgressRecord
 from .features.lessons import LessonGenerator, canonical_item_id
 from .features.presentation import PresentationCoach, evaluate_delivery
 from .features.roleplay import RoleplayCoach, evaluate_graduation
+from .language.sudachi_toolkit import SudachiToolkit
 from .llm.gateway import LLMGateway, provider_label
 from .llm.openai_transport import OpenAICompatibleTransport, extract_json_text
 from .schemas.lessons import (
@@ -87,6 +89,7 @@ class LessonGenerationService:
         explanation_workers: int = 4,
         quiz_primary_model: str | None = None,
         quiz_fallback_model: str | None = None,
+        toolkit: LanguageToolkit | None = None,
     ) -> None:
         self.gateway = LLMGateway(
             transport,
@@ -97,7 +100,10 @@ class LessonGenerationService:
             quiz_primary_model=quiz_primary_model,
             quiz_fallback_model=quiz_fallback_model,
         )
-        self.lessons = LessonGenerator(self.gateway, parallel_explanations, explanation_workers)
+        self.toolkit = toolkit or SudachiToolkit.shared()
+        self.lessons = LessonGenerator(
+            self.gateway, self.toolkit, parallel_explanations, explanation_workers
+        )
         self.roleplay = RoleplayCoach(self.gateway)
         self.presentation = PresentationCoach(self.gateway, explanation_workers)
 

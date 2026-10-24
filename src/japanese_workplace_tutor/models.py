@@ -168,6 +168,9 @@ class ReviewAttempt(Base):
     answer_confidence: Mapped[str] = mapped_column(String(16), default="sure")
     is_correct: Mapped[bool] = mapped_column(Boolean())
     is_retry: Mapped[bool] = mapped_column(Boolean(), default=False)
+    # False for practice questions whose key code could not verify: the answer is
+    # logged for completion and analytics but never changes mastery or schedules.
+    is_graded: Mapped[bool] = mapped_column(Boolean(), default=True, server_default="1")
     outcome: Mapped[str] = mapped_column(String(16))
     policy_version: Mapped[str] = mapped_column(String(16))
     answered_at: Mapped[datetime] = mapped_column(DateTime())
@@ -190,3 +193,37 @@ class CompletedLessonMetadata(Base):
     difficulty: Mapped[str] = mapped_column(String(32))
     studied_item_ids: Mapped[list[str]] = mapped_column(JSON)
     completed_at: Mapped[datetime] = mapped_column(DateTime())
+
+
+class ContentReview(Base):
+    """A team reviewer's verdict on one generated item, question or line (decision 9).
+
+    Reviewer mode only. Unlike learner data, the snapshot keeps the reviewed text,
+    because judging accuracy needs it; reviewers are told not to use work data.
+    """
+
+    __tablename__ = "content_reviews"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "lesson_session_id", "target_kind", "target_id",
+            name="uq_review_target",
+        ),
+        CheckConstraint(
+            "target_kind IN ('item', 'question', 'line', 'lesson')", name="ck_review_target_kind"
+        ),
+        CheckConstraint("verdict IN ('ok', 'wrong')", name="ck_review_verdict"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    lesson_session_id: Mapped[str] = mapped_column(String(36), index=True)
+    target_kind: Mapped[str] = mapped_column(String(16))
+    target_id: Mapped[str] = mapped_column(String(128))
+    verdict: Mapped[str] = mapped_column(String(8))
+    reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    snapshot: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    versions: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime())

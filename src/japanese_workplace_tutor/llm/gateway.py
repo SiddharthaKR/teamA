@@ -16,7 +16,7 @@ from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
 
-from ..core.errors import GenerationError
+from ..core.errors import ContractViolation, GenerationError
 from ..core.ports import DataClass, ModelTransport, accepts_private_data
 
 LOGGER = logging.getLogger("japanese_workplace_tutor.generation")
@@ -335,6 +335,8 @@ class LLMGateway:
                 else ""
             )
             return "Fix these validation errors: " + "; ".join(messages) + suffix
+        if isinstance(error, ContractViolation):
+            return str(error)
         if isinstance(error, json.JSONDecodeError):
             return "The response was not valid JSON."
         return "The provider request failed before producing a valid lesson."

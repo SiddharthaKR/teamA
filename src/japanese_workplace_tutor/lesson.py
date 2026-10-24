@@ -334,8 +334,9 @@ class AttemptResult:
     mastery_score: float
     sm2_interval_days: int
     sm2_ease: float
-    next_review_at: datetime
+    next_review_at: datetime | None
     duplicate: bool
+    graded: bool = True
 
 
 @dataclass(frozen=True)
@@ -638,6 +639,27 @@ class LessonService:
                     raise LessonStateError("This question is not part of the active review.")
 
             is_correct = selected_option_index == question.correct_option_index
+            if not question.graded:
+                # Practice only: log the answer, leave mastery and schedules untouched.
+                attempt = ReviewAttempt(
+                    user_id=user_id,
+                    item_id=question.item_id,
+                    lesson_session_id=lesson_session_id,
+                    idempotency_key=idempotency_key,
+                    question_form=question.form.value,
+                    skill_dimension=skill_dimension(question.form, fixture_item.category).value,
+                    answer_confidence=confidence.value,
+                    is_correct=is_correct,
+                    is_retry=is_retry,
+                    is_graded=False,
+                    outcome=(ReviewOutcome.GOOD if is_correct else ReviewOutcome.AGAIN).value,
+                    policy_version="ungraded",
+                    answered_at=now,
+                )
+                session.add(attempt)
+                session.commit()
+                session.refresh(progress)
+                return self._attempt_result(attempt, question.question_id, progress, False)
             if is_correct:
                 progress.correct_count += 1
             else:
@@ -646,6 +668,7 @@ class LessonService:
                 select(ReviewAttempt).where(
                     ReviewAttempt.user_id == user_id,
                     ReviewAttempt.item_id == question.item_id,
+                    ReviewAttempt.is_graded.is_(True),
                 )
             ).all()
             dimension = skill_dimension(question.form, fixture_item.category)
@@ -902,7 +925,7 @@ class LessonService:
         progress: UserItemProgress,
         duplicate: bool,
     ) -> AttemptResult:
-        if progress.next_review_at is None:
+        if attempt.is_graded and progress.next_review_at is None:
             raise LessonStateError("The answer did not produce a review schedule.")
         return AttemptResult(
             item_id=attempt.item_id,
@@ -914,6 +937,7 @@ class LessonService:
             sm2_ease=progress.sm2_ease,
             next_review_at=progress.next_review_at,
             duplicate=duplicate,
+            graded=attempt.is_graded is not False,
         )
 
     @staticmethod
