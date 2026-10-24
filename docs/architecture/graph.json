@@ -1309,7 +1309,7 @@
  "changelog": [
   {
    "date": "2026-10-24",
-   "commit": "",
+   "commit": "3c3e217",
    "title": "End goal step 1: named items, status, coverage, milestones, due reviews for generated items (migration 0009)",
    "blocks": [
     "progress_view",
