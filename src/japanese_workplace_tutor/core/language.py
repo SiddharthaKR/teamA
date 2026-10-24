@@ -26,7 +26,8 @@ class LexiconEntry:
     readings: frozenset[str]  # every reading the reference data accepts, in hiragana
     level: JLPTLevel | None
     meanings: tuple[str, ...]
-    provenance: str  # e.g. "openjlpt-0.1.0", "override-v1"
+    provenance: str  # e.g. "tanos-v1", "openjlpt-0.1.0", "override-v1", "business-v1"
+    business_group: str | None = None  # set when the word is on the curated workplace list
 
 
 @dataclass(frozen=True)
@@ -57,8 +58,19 @@ class LanguageToolkit(Protocol):
     def grammar_point(self, expression: str) -> GrammarPoint | None: ...
 
 
+BUSINESS_LABEL = "Business Japanese"
+
+
 def jlpt_label(level: str | None) -> str | None:
     return f"JLPT {level}" if level else None
+
+
+def reference_label(entry: LexiconEntry) -> str | None:
+    """JLPT level when the reference lists rate the word; else the workplace section."""
+
+    if entry.level:
+        return jlpt_label(entry.level)
+    return BUSINESS_LABEL if entry.business_group else None
 
 
 def to_hiragana(text: str) -> str:

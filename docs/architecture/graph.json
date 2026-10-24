@@ -463,7 +463,7 @@
    "status": "built",
    "kind": "code",
    "phase": null,
-   "description": "No IO, UI, database or SDK imports (import-linter). Items and questions, learner and inputs, progress policy t05-v1 with replay, key verification, difficulty, ports.",
+   "description": "No IO, UI, database or SDK imports (import-linter). Items and questions, learner and inputs, progress policy t05-v1 with replay, key verification, difficulty (JLPT level plus Business Japanese in section), ports.",
    "modules": [
     "core.items",
     "core.learner",
@@ -546,7 +546,7 @@
    "status": "built",
    "kind": "code",
    "phase": null,
-   "description": "Tokenizer, readings, dictionary forms, JLPT levels and grammar points from reference data, never from the model.",
+   "description": "Tokenizer, readings, dictionary forms, JLPT levels, Business Japanese tags and grammar points from reference data, never from the model.",
    "modules": [
     "language.sudachi_toolkit"
    ],
@@ -563,6 +563,7 @@
    "tech": [
     "sudachipy",
     "sudachidict",
+    "tanos",
     "openjlpt",
     "curated"
    ]
@@ -638,13 +639,14 @@
    "status": "built",
    "kind": "external",
    "phase": null,
-   "description": "SudachiDict-core 20261015, OpenJLPT 0.1.0 (alpha, known errors), jlpt_overrides_v1, grammar_points_v1.",
+   "description": "SudachiDict-core 20261015; tanos JLPT lists (primary); OpenJLPT 0.1.0 (gap fill only); jlpt_overrides_v1; business_vocab_v1; grammar_points_v1.",
    "modules": [],
    "tools": [],
    "decisions": [],
    "wide": false,
    "tech": [
     "sudachidict",
+    "tanos",
     "openjlpt",
     "curated"
    ]
@@ -1136,7 +1138,18 @@
  "changelog": [
   {
    "date": "2026-10-24",
-   "commit": "",
+   "commit": "73bfb7b",
+   "title": "Reference data: tanos JLPT lists primary, OpenJLPT as gap fill, Business Japanese list; difficulty counts workplace words as in section",
+   "blocks": [
+    "toolkit",
+    "refdata",
+    "core",
+    "f_lessons"
+   ]
+  },
+  {
+   "date": "2026-10-24",
+   "commit": "cca5f7c",
    "title": "System map: external tech catalog and the archmap generator (scripts/archmap.py)",
    "blocks": [
     "tests"
@@ -1356,6 +1369,16 @@
    "status": "built"
   },
   {
+   "id": "tanos",
+   "name": "tanos JLPT lists",
+   "category": "Reference data",
+   "version": "open-anki-jlpt-decks, 8,131 rows",
+   "license": "CC BY (data), MIT (repo)",
+   "packages": [],
+   "notes": "Primary JLPT word levels and readings, bundled as resources/jlpt_vocab_tanos_v1.json by scripts/build_jlpt_resource.py.",
+   "status": "built"
+  },
+  {
    "id": "openjlpt",
    "name": "OpenJLPT",
    "category": "Reference data",
@@ -1364,17 +1387,17 @@
    "packages": [
     "openjlpt"
    ],
-   "notes": "JLPT word and kanji levels; known data errors.",
+   "notes": "Fallback only: fills words the tanos list lacks; known data errors.",
    "status": "built"
   },
   {
    "id": "curated",
    "name": "Curated lists",
    "category": "Reference data",
-   "version": "grammar-list-v1, override-v1",
+   "version": "grammar-list-v1, override-v1, business-v1",
    "license": "internal",
    "packages": [],
-   "notes": "56 grammar points and 9 level fixes; team review pending.",
+   "notes": "56 grammar points, 9 level fixes and 160 Business Japanese words (spellings, readings, groups); team review pending.",
    "status": "built"
   },
   {

@@ -1,15 +1,22 @@
-"""LanguageToolkit adapter: SudachiPy tokenization + OpenJLPT levels + curated lists.
+"""LanguageToolkit adapter: SudachiPy tokenization + JLPT reference lists + curated lists.
 
-Reference data quality: OpenJLPT 0.1.0 is an alpha dataset with known errors
-(some levels and readings are wrong). Levels are therefore treated as reference
-data with provenance, corrected by resources/jlpt_overrides_v1.json, and checked
-by the team accuracy review. When a word has entries at several levels, the
-easiest level wins.
+Reference data, in priority order (later sources win):
+1. OpenJLPT 0.1.0 fills words the primary list lacks. It is an alpha dataset with
+   known level and reading errors, so it is only a fallback.
+2. tanos-v1 (resources/jlpt_vocab_tanos_v1.json) is the primary JLPT list:
+   Jonathan Waller's tanos.co.uk lists (CC BY) as maintained in
+   jamsinclair/open-anki-jlpt-decks (MIT).
+3. override-v1 corrects known errors in both.
+4. business-v1 tags curated workplace words; it keeps a word's JLPT level and adds
+   words no JLPT list has (共有, 進捗, メール).
+When a list has a word at several levels, the easiest level wins. Every entry
+carries its provenance, and the team accuracy review checks them.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import replace
 from functools import lru_cache
 from importlib import resources
 import json
@@ -51,7 +58,10 @@ class SudachiToolkit:
         self._split_mode = SplitMode.C
         self._tokenizer = Dictionary(dict="core").tokenizer()
         self._lock = Lock()
-        self.version = f"sudachi-core+openjlpt-{openjlpt.__version__}+override-v1+grammar-list-v1"
+        self.version = (
+            f"sudachi-core+tanos-v1+openjlpt-{openjlpt.__version__}"
+            "+override-v1+business-v1+grammar-list-v1"
+        )
         self._lexicon = self._build_lexicon(openjlpt)
         self._grammar = self._load_grammar()
 
@@ -62,21 +72,27 @@ class SudachiToolkit:
 
     # -- reference data -------------------------------------------------
     @staticmethod
-    def _build_lexicon(openjlpt) -> dict[str, LexiconEntry]:
+    def _resource(name: str) -> dict:
+        return json.loads(
+            resources.files("japanese_workplace_tutor.resources").joinpath(name).read_text(encoding="utf-8")
+        )
+
+    @staticmethod
+    def _merge_list(rows, provenance: str) -> dict[str, LexiconEntry]:
+        """rows: (word, raw reading, level, meanings). Easiest level wins per word."""
+
         levels: dict[str, list[str]] = defaultdict(list)
         readings: dict[str, set[str]] = defaultdict(set)
         meanings: dict[str, list[str]] = defaultdict(list)
-        for level in openjlpt.levels:
-            for vocab in openjlpt.get_vocab(level):
-                levels[vocab.word].append(vocab.level)
-                cleaned = _clean_readings(vocab.word, vocab.reading)
-                if cleaned:
-                    readings[vocab.word].update(cleaned)
-                elif is_kana_only(vocab.word):
-                    readings[vocab.word].add(to_hiragana(vocab.word))
-                meanings[vocab.word].extend(m for m in vocab.meanings if m not in meanings[vocab.word])
-        provenance = f"openjlpt-{openjlpt.__version__}"
-        lexicon = {
+        for word, reading, level, word_meanings in rows:
+            levels[word].append(level)
+            cleaned = _clean_readings(word, reading)
+            if cleaned:
+                readings[word].update(cleaned)
+            elif is_kana_only(word):
+                readings[word].add(to_hiragana(word))
+            meanings[word].extend(m for m in word_meanings if m not in meanings[word])
+        return {
             word: LexiconEntry(
                 lemma=word,
                 readings=frozenset(readings[word]),
@@ -86,11 +102,28 @@ class SudachiToolkit:
             )
             for word, word_levels in levels.items()
         }
-        overrides = json.loads(
-            resources.files("japanese_workplace_tutor.resources")
-            .joinpath("jlpt_overrides_v1.json")
-            .read_text(encoding="utf-8")
+
+    @classmethod
+    def _build_lexicon(cls, openjlpt) -> dict[str, LexiconEntry]:
+        lexicon = cls._merge_list(
+            (
+                (vocab.word, vocab.reading, vocab.level, vocab.meanings)
+                for level in openjlpt.levels
+                for vocab in openjlpt.get_vocab(level)
+            ),
+            f"openjlpt-{openjlpt.__version__}",
         )
+        tanos = cls._resource("jlpt_vocab_tanos_v1.json")
+        lexicon.update(
+            cls._merge_list(
+                (
+                    (word, reading, level, tuple(m.strip() for m in meaning.split(",") if m.strip()))
+                    for word, reading, level, meaning in tanos["entries"]
+                ),
+                tanos["version"],
+            )
+        )
+        overrides = cls._resource("jlpt_overrides_v1.json")
         for entry in overrides["entries"]:
             lexicon[entry["lemma"]] = LexiconEntry(
                 lemma=entry["lemma"],
@@ -99,6 +132,28 @@ class SudachiToolkit:
                 meanings=tuple(entry["meanings"]),
                 provenance=overrides["version"],
             )
+        business = cls._resource("business_vocab_v1.json")
+        for raw in business["entries"]:
+            known = lexicon.get(raw["lemma"])
+            if known is not None:
+                entry = replace(
+                    known,
+                    readings=known.readings | frozenset(raw["readings"]),
+                    business_group=raw["group"],
+                )
+            else:
+                entry = LexiconEntry(
+                    lemma=raw["lemma"],
+                    readings=frozenset(raw["readings"]),
+                    level=None,
+                    meanings=tuple(raw["meanings"]),
+                    provenance=business["version"],
+                    business_group=raw["group"],
+                )
+            lexicon[raw["lemma"]] = entry
+            for alternate in raw.get("alternates", ()):
+                # Alternate spellings share the canonical entry, so they share one item.
+                lexicon[alternate] = entry
         return lexicon
 
     @staticmethod
@@ -147,7 +202,7 @@ class SudachiToolkit:
     def lemma(self, expression: str) -> str:
         text = normalize_expression(expression)
         if text in self._lexicon:
-            return text
+            return self._lexicon[text].lemma
         content = [token for token in self.tokenize(text) if token.is_content]
         if len(content) == 1:
             return content[0].lemma

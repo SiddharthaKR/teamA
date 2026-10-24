@@ -1,0 +1,1664 @@
+{
+ "version": "business-v1",
+ "status": "Curated workplace vocabulary for an IT company; team review pending. Original list, no third-party source.",
+ "groups": {
+  "meetings": "Meetings",
+  "communication": "Email and phone",
+  "schedule": "Schedules and deadlines",
+  "attendance": "Attendance and leave",
+  "organization": "Company and roles",
+  "documents": "Documents and money",
+  "it": "IT projects",
+  "keigo": "Business keigo",
+  "phrases": "Set phrases"
+ },
+ "entries": [
+  {
+   "lemma": "会議",
+   "readings": [
+    "かいぎ"
+   ],
+   "meanings": [
+    "meeting"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "打ち合わせ",
+   "readings": [
+    "うちあわせ"
+   ],
+   "meanings": [
+    "(planning) meeting"
+   ],
+   "group": "meetings",
+   "alternates": [
+    "打合せ",
+    "打ち合せ"
+   ]
+  },
+  {
+   "lemma": "議題",
+   "readings": [
+    "ぎだい"
+   ],
+   "meanings": [
+    "agenda item"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "議事録",
+   "readings": [
+    "ぎじろく"
+   ],
+   "meanings": [
+    "meeting minutes"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "資料",
+   "readings": [
+    "しりょう"
+   ],
+   "meanings": [
+    "materials, documents"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "出席",
+   "readings": [
+    "しゅっせき"
+   ],
+   "meanings": [
+    "attendance"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "欠席",
+   "readings": [
+    "けっせき"
+   ],
+   "meanings": [
+    "absence"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "参加",
+   "readings": [
+    "さんか"
+   ],
+   "meanings": [
+    "participation"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "発表",
+   "readings": [
+    "はっぴょう"
+   ],
+   "meanings": [
+    "presentation, announcement"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "説明",
+   "readings": [
+    "せつめい"
+   ],
+   "meanings": [
+    "explanation"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "質問",
+   "readings": [
+    "しつもん"
+   ],
+   "meanings": [
+    "question"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "意見",
+   "readings": [
+    "いけん"
+   ],
+   "meanings": [
+    "opinion"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "提案",
+   "readings": [
+    "ていあん"
+   ],
+   "meanings": [
+    "proposal"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "検討",
+   "readings": [
+    "けんとう"
+   ],
+   "meanings": [
+    "consideration, review"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "決定",
+   "readings": [
+    "けってい"
+   ],
+   "meanings": [
+    "decision"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "承認",
+   "readings": [
+    "しょうにん"
+   ],
+   "meanings": [
+    "approval"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "確認",
+   "readings": [
+    "かくにん"
+   ],
+   "meanings": [
+    "confirmation, check"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "共有",
+   "readings": [
+    "きょうゆう"
+   ],
+   "meanings": [
+    "sharing"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "報告",
+   "readings": [
+    "ほうこく"
+   ],
+   "meanings": [
+    "report"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "連絡",
+   "readings": [
+    "れんらく"
+   ],
+   "meanings": [
+    "contact, notice"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "相談",
+   "readings": [
+    "そうだん"
+   ],
+   "meanings": [
+    "consultation"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "依頼",
+   "readings": [
+    "いらい"
+   ],
+   "meanings": [
+    "request"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "対応",
+   "readings": [
+    "たいおう"
+   ],
+   "meanings": [
+    "handling, response"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "調整",
+   "readings": [
+    "ちょうせい"
+   ],
+   "meanings": [
+    "coordination, adjustment"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "進捗",
+   "readings": [
+    "しんちょく"
+   ],
+   "meanings": [
+    "progress"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "予定",
+   "readings": [
+    "よてい"
+   ],
+   "meanings": [
+    "plan, schedule"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "日程",
+   "readings": [
+    "にってい"
+   ],
+   "meanings": [
+    "schedule, dates"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "締め切り",
+   "readings": [
+    "しめきり"
+   ],
+   "meanings": [
+    "deadline"
+   ],
+   "group": "schedule",
+   "alternates": [
+    "締切",
+    "〆切"
+   ]
+  },
+  {
+   "lemma": "期限",
+   "readings": [
+    "きげん"
+   ],
+   "meanings": [
+    "time limit"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "納期",
+   "readings": [
+    "のうき"
+   ],
+   "meanings": [
+    "delivery date"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "延期",
+   "readings": [
+    "えんき"
+   ],
+   "meanings": [
+    "postponement"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "変更",
+   "readings": [
+    "へんこう"
+   ],
+   "meanings": [
+    "change"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "中止",
+   "readings": [
+    "ちゅうし"
+   ],
+   "meanings": [
+    "cancellation"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "会議室",
+   "readings": [
+    "かいぎしつ"
+   ],
+   "meanings": [
+    "meeting room"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "予約",
+   "readings": [
+    "よやく"
+   ],
+   "meanings": [
+    "reservation, booking"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "出張",
+   "readings": [
+    "しゅっちょう"
+   ],
+   "meanings": [
+    "business trip"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "残業",
+   "readings": [
+    "ざんぎょう"
+   ],
+   "meanings": [
+    "overtime"
+   ],
+   "group": "attendance"
+  },
+  {
+   "lemma": "休暇",
+   "readings": [
+    "きゅうか"
+   ],
+   "meanings": [
+    "leave, holiday"
+   ],
+   "group": "attendance"
+  },
+  {
+   "lemma": "有給",
+   "readings": [
+    "ゆうきゅう"
+   ],
+   "meanings": [
+    "paid leave"
+   ],
+   "group": "attendance"
+  },
+  {
+   "lemma": "在宅勤務",
+   "readings": [
+    "ざいたくきんむ"
+   ],
+   "meanings": [
+    "working from home"
+   ],
+   "group": "attendance"
+  },
+  {
+   "lemma": "出社",
+   "readings": [
+    "しゅっしゃ"
+   ],
+   "meanings": [
+    "coming in to the office"
+   ],
+   "group": "attendance"
+  },
+  {
+   "lemma": "退社",
+   "readings": [
+    "たいしゃ"
+   ],
+   "meanings": [
+    "leaving the office",
+    "leaving a company"
+   ],
+   "group": "attendance"
+  },
+  {
+   "lemma": "勤務",
+   "readings": [
+    "きんむ"
+   ],
+   "meanings": [
+    "work, duty"
+   ],
+   "group": "attendance"
+  },
+  {
+   "lemma": "定時",
+   "readings": [
+    "ていじ"
+   ],
+   "meanings": [
+    "regular hours"
+   ],
+   "group": "attendance"
+  },
+  {
+   "lemma": "遅刻",
+   "readings": [
+    "ちこく"
+   ],
+   "meanings": [
+    "being late"
+   ],
+   "group": "attendance"
+  },
+  {
+   "lemma": "早退",
+   "readings": [
+    "そうたい"
+   ],
+   "meanings": [
+    "leaving early"
+   ],
+   "group": "attendance"
+  },
+  {
+   "lemma": "メール",
+   "readings": [
+    "めーる"
+   ],
+   "meanings": [
+    "email"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "返信",
+   "readings": [
+    "へんしん"
+   ],
+   "meanings": [
+    "reply"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "送信",
+   "readings": [
+    "そうしん"
+   ],
+   "meanings": [
+    "sending"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "添付",
+   "readings": [
+    "てんぷ"
+   ],
+   "meanings": [
+    "attachment"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "件名",
+   "readings": [
+    "けんめい"
+   ],
+   "meanings": [
+    "subject line"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "宛先",
+   "readings": [
+    "あてさき"
+   ],
+   "meanings": [
+    "addressee"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "署名",
+   "readings": [
+    "しょめい"
+   ],
+   "meanings": [
+    "signature"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "内線",
+   "readings": [
+    "ないせん"
+   ],
+   "meanings": [
+    "extension (phone)"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "折り返し",
+   "readings": [
+    "おりかえし"
+   ],
+   "meanings": [
+    "calling back"
+   ],
+   "group": "communication",
+   "alternates": [
+    "折返し"
+   ]
+  },
+  {
+   "lemma": "伝言",
+   "readings": [
+    "でんごん"
+   ],
+   "meanings": [
+    "message (left for someone)"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "不在",
+   "readings": [
+    "ふざい"
+   ],
+   "meanings": [
+    "absence, being out"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "担当",
+   "readings": [
+    "たんとう"
+   ],
+   "meanings": [
+    "being in charge"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "担当者",
+   "readings": [
+    "たんとうしゃ"
+   ],
+   "meanings": [
+    "person in charge"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "窓口",
+   "readings": [
+    "まどぐち"
+   ],
+   "meanings": [
+    "point of contact"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "問い合わせ",
+   "readings": [
+    "といあわせ"
+   ],
+   "meanings": [
+    "inquiry"
+   ],
+   "group": "communication",
+   "alternates": [
+    "問合せ",
+    "問い合せ"
+   ]
+  },
+  {
+   "lemma": "案内",
+   "readings": [
+    "あんない"
+   ],
+   "meanings": [
+    "guidance, notice"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "連絡先",
+   "readings": [
+    "れんらくさき"
+   ],
+   "meanings": [
+    "contact details"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "至急",
+   "readings": [
+    "しきゅう"
+   ],
+   "meanings": [
+    "urgent"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "部署",
+   "readings": [
+    "ぶしょ"
+   ],
+   "meanings": [
+    "department"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "部長",
+   "readings": [
+    "ぶちょう"
+   ],
+   "meanings": [
+    "department manager"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "課長",
+   "readings": [
+    "かちょう"
+   ],
+   "meanings": [
+    "section manager"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "社長",
+   "readings": [
+    "しゃちょう"
+   ],
+   "meanings": [
+    "company president"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "上司",
+   "readings": [
+    "じょうし"
+   ],
+   "meanings": [
+    "boss, superior"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "部下",
+   "readings": [
+    "ぶか"
+   ],
+   "meanings": [
+    "subordinate"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "同僚",
+   "readings": [
+    "どうりょう"
+   ],
+   "meanings": [
+    "colleague"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "先輩",
+   "readings": [
+    "せんぱい"
+   ],
+   "meanings": [
+    "senior colleague"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "後輩",
+   "readings": [
+    "こうはい"
+   ],
+   "meanings": [
+    "junior colleague"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "新人",
+   "readings": [
+    "しんじん"
+   ],
+   "meanings": [
+    "newcomer"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "取引先",
+   "readings": [
+    "とりひきさき"
+   ],
+   "meanings": [
+    "client, business partner"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "顧客",
+   "readings": [
+    "こきゃく"
+   ],
+   "meanings": [
+    "customer"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "社員",
+   "readings": [
+    "しゃいん"
+   ],
+   "meanings": [
+    "employee"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "社内",
+   "readings": [
+    "しゃない"
+   ],
+   "meanings": [
+    "in-house"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "社外",
+   "readings": [
+    "しゃがい"
+   ],
+   "meanings": [
+    "outside the company"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "営業",
+   "readings": [
+    "えいぎょう"
+   ],
+   "meanings": [
+    "sales"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "人事",
+   "readings": [
+    "じんじ"
+   ],
+   "meanings": [
+    "human resources"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "総務",
+   "readings": [
+    "そうむ"
+   ],
+   "meanings": [
+    "general affairs"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "経理",
+   "readings": [
+    "けいり"
+   ],
+   "meanings": [
+    "accounting"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "本社",
+   "readings": [
+    "ほんしゃ"
+   ],
+   "meanings": [
+    "head office"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "支社",
+   "readings": [
+    "ししゃ"
+   ],
+   "meanings": [
+    "branch office"
+   ],
+   "group": "organization"
+  },
+  {
+   "lemma": "書類",
+   "readings": [
+    "しょるい"
+   ],
+   "meanings": [
+    "documents, paperwork"
+   ],
+   "group": "documents"
+  },
+  {
+   "lemma": "契約",
+   "readings": [
+    "けいやく"
+   ],
+   "meanings": [
+    "contract"
+   ],
+   "group": "documents"
+  },
+  {
+   "lemma": "契約書",
+   "readings": [
+    "けいやくしょ"
+   ],
+   "meanings": [
+    "written contract"
+   ],
+   "group": "documents"
+  },
+  {
+   "lemma": "見積もり",
+   "readings": [
+    "みつもり"
+   ],
+   "meanings": [
+    "estimate, quote"
+   ],
+   "group": "documents",
+   "alternates": [
+    "見積り",
+    "見積"
+   ]
+  },
+  {
+   "lemma": "請求書",
+   "readings": [
+    "せいきゅうしょ"
+   ],
+   "meanings": [
+    "invoice"
+   ],
+   "group": "documents"
+  },
+  {
+   "lemma": "申請",
+   "readings": [
+    "しんせい"
+   ],
+   "meanings": [
+    "application (form)"
+   ],
+   "group": "documents"
+  },
+  {
+   "lemma": "手続き",
+   "readings": [
+    "てつづき"
+   ],
+   "meanings": [
+    "procedure, paperwork"
+   ],
+   "group": "documents",
+   "alternates": [
+    "手続"
+   ]
+  },
+  {
+   "lemma": "決裁",
+   "readings": [
+    "けっさい"
+   ],
+   "meanings": [
+    "approval (by a manager)"
+   ],
+   "group": "documents"
+  },
+  {
+   "lemma": "押印",
+   "readings": [
+    "おういん"
+   ],
+   "meanings": [
+    "affixing a seal"
+   ],
+   "group": "documents"
+  },
+  {
+   "lemma": "予算",
+   "readings": [
+    "よさん"
+   ],
+   "meanings": [
+    "budget"
+   ],
+   "group": "documents"
+  },
+  {
+   "lemma": "売上",
+   "readings": [
+    "うりあげ"
+   ],
+   "meanings": [
+    "sales, revenue"
+   ],
+   "group": "documents",
+   "alternates": [
+    "売り上げ"
+   ]
+  },
+  {
+   "lemma": "費用",
+   "readings": [
+    "ひよう"
+   ],
+   "meanings": [
+    "cost"
+   ],
+   "group": "documents"
+  },
+  {
+   "lemma": "経費",
+   "readings": [
+    "けいひ"
+   ],
+   "meanings": [
+    "expenses"
+   ],
+   "group": "documents"
+  },
+  {
+   "lemma": "精算",
+   "readings": [
+    "せいさん"
+   ],
+   "meanings": [
+    "settling expenses"
+   ],
+   "group": "documents"
+  },
+  {
+   "lemma": "仕様",
+   "readings": [
+    "しよう"
+   ],
+   "meanings": [
+    "specification"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "仕様書",
+   "readings": [
+    "しようしょ"
+   ],
+   "meanings": [
+    "specification document"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "要件",
+   "readings": [
+    "ようけん"
+   ],
+   "meanings": [
+    "requirement"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "設計",
+   "readings": [
+    "せっけい"
+   ],
+   "meanings": [
+    "design"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "開発",
+   "readings": [
+    "かいはつ"
+   ],
+   "meanings": [
+    "development"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "実装",
+   "readings": [
+    "じっそう"
+   ],
+   "meanings": [
+    "implementation"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "試験",
+   "readings": [
+    "しけん"
+   ],
+   "meanings": [
+    "test, testing"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "不具合",
+   "readings": [
+    "ふぐあい"
+   ],
+   "meanings": [
+    "defect, bug"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "障害",
+   "readings": [
+    "しょうがい"
+   ],
+   "meanings": [
+    "failure, outage"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "修正",
+   "readings": [
+    "しゅうせい"
+   ],
+   "meanings": [
+    "fix, correction"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "改善",
+   "readings": [
+    "かいぜん"
+   ],
+   "meanings": [
+    "improvement"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "導入",
+   "readings": [
+    "どうにゅう"
+   ],
+   "meanings": [
+    "introduction, rollout"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "運用",
+   "readings": [
+    "うんよう"
+   ],
+   "meanings": [
+    "operation (of a system)"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "保守",
+   "readings": [
+    "ほしゅ"
+   ],
+   "meanings": [
+    "maintenance"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "納品",
+   "readings": [
+    "のうひん"
+   ],
+   "meanings": [
+    "delivery (of goods or work)"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "案件",
+   "readings": [
+    "あんけん"
+   ],
+   "meanings": [
+    "project, matter"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "工数",
+   "readings": [
+    "こうすう"
+   ],
+   "meanings": [
+    "person-hours"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "課題",
+   "readings": [
+    "かだい"
+   ],
+   "meanings": [
+    "issue, task"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "作業",
+   "readings": [
+    "さぎょう"
+   ],
+   "meanings": [
+    "work, task"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "手順",
+   "readings": [
+    "てじゅん"
+   ],
+   "meanings": [
+    "steps, procedure"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "環境",
+   "readings": [
+    "かんきょう"
+   ],
+   "meanings": [
+    "environment"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "本番",
+   "readings": [
+    "ほんばん"
+   ],
+   "meanings": [
+    "production (environment)"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "リリース",
+   "readings": [
+    "りりーす"
+   ],
+   "meanings": [
+    "release"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "スケジュール",
+   "readings": [
+    "すけじゅーる"
+   ],
+   "meanings": [
+    "schedule"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "プロジェクト",
+   "readings": [
+    "ぷろじぇくと"
+   ],
+   "meanings": [
+    "project"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "ミーティング",
+   "readings": [
+    "みーてぃんぐ"
+   ],
+   "meanings": [
+    "meeting"
+   ],
+   "group": "meetings"
+  },
+  {
+   "lemma": "タスク",
+   "readings": [
+    "たすく"
+   ],
+   "meanings": [
+    "task"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "レビュー",
+   "readings": [
+    "れびゅー"
+   ],
+   "meanings": [
+    "review"
+   ],
+   "group": "it"
+  },
+  {
+   "lemma": "フィードバック",
+   "readings": [
+    "ふぃーどばっく"
+   ],
+   "meanings": [
+    "feedback"
+   ],
+   "group": "communication"
+  },
+  {
+   "lemma": "アポイント",
+   "readings": [
+    "あぽいんと"
+   ],
+   "meanings": [
+    "appointment"
+   ],
+   "group": "schedule"
+  },
+  {
+   "lemma": "伺う",
+   "readings": [
+    "うかがう"
+   ],
+   "meanings": [
+    "to visit",
+    "to ask (humble)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "申す",
+   "readings": [
+    "もうす"
+   ],
+   "meanings": [
+    "to say (humble)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "申し上げる",
+   "readings": [
+    "もうしあげる"
+   ],
+   "meanings": [
+    "to say (humble)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "存じる",
+   "readings": [
+    "ぞんじる"
+   ],
+   "meanings": [
+    "to know, to think (humble)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "拝見",
+   "readings": [
+    "はいけん"
+   ],
+   "meanings": [
+    "looking at (humble)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "承る",
+   "readings": [
+    "うけたまわる"
+   ],
+   "meanings": [
+    "to receive, to hear (humble)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "恐縮",
+   "readings": [
+    "きょうしゅく"
+   ],
+   "meanings": [
+    "being grateful or sorry (formal)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "恐れ入る",
+   "readings": [
+    "おそれいる"
+   ],
+   "meanings": [
+    "to be grateful",
+    "to be sorry (formal)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "失礼",
+   "readings": [
+    "しつれい"
+   ],
+   "meanings": [
+    "rudeness",
+    "excuse me"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "申し訳",
+   "readings": [
+    "もうしわけ"
+   ],
+   "meanings": [
+    "apology, excuse"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "差し上げる",
+   "readings": [
+    "さしあげる"
+   ],
+   "meanings": [
+    "to give (humble)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "いただく",
+   "readings": [
+    "いただく"
+   ],
+   "meanings": [
+    "to receive (humble)"
+   ],
+   "group": "keigo",
+   "alternates": [
+    "頂く"
+   ]
+  },
+  {
+   "lemma": "くださる",
+   "readings": [
+    "くださる"
+   ],
+   "meanings": [
+    "to give (respectful)"
+   ],
+   "group": "keigo",
+   "alternates": [
+    "下さる"
+   ]
+  },
+  {
+   "lemma": "おっしゃる",
+   "readings": [
+    "おっしゃる"
+   ],
+   "meanings": [
+    "to say (respectful)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "いらっしゃる",
+   "readings": [
+    "いらっしゃる"
+   ],
+   "meanings": [
+    "to come, go, be (respectful)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "参る",
+   "readings": [
+    "まいる"
+   ],
+   "meanings": [
+    "to come, to go (humble)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "致す",
+   "readings": [
+    "いたす"
+   ],
+   "meanings": [
+    "to do (humble)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "御社",
+   "readings": [
+    "おんしゃ"
+   ],
+   "meanings": [
+    "your company (spoken)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "貴社",
+   "readings": [
+    "きしゃ"
+   ],
+   "meanings": [
+    "your company (written)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "弊社",
+   "readings": [
+    "へいしゃ"
+   ],
+   "meanings": [
+    "our company (humble)"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "当社",
+   "readings": [
+    "とうしゃ"
+   ],
+   "meanings": [
+    "our company"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "承知",
+   "readings": [
+    "しょうち"
+   ],
+   "meanings": [
+    "understanding, consent"
+   ],
+   "group": "keigo"
+  },
+  {
+   "lemma": "お疲れ様です",
+   "readings": [
+    "おつかれさまです"
+   ],
+   "meanings": [
+    "thanks for your hard work (greeting)"
+   ],
+   "group": "phrases",
+   "alternates": [
+    "お疲れさまです"
+   ]
+  },
+  {
+   "lemma": "お世話になっております",
+   "readings": [
+    "おせわになっております"
+   ],
+   "meanings": [
+    "thank you for your continued support"
+   ],
+   "group": "phrases"
+  },
+  {
+   "lemma": "よろしくお願いいたします",
+   "readings": [
+    "よろしくおねがいいたします"
+   ],
+   "meanings": [
+    "thank you in advance (formal)"
+   ],
+   "group": "phrases",
+   "alternates": [
+    "よろしくお願い致します"
+   ]
+  },
+  {
+   "lemma": "承知しました",
+   "readings": [
+    "しょうちしました"
+   ],
+   "meanings": [
+    "understood (formal)"
+   ],
+   "group": "phrases"
+  },
+  {
+   "lemma": "かしこまりました",
+   "readings": [
+    "かしこまりました"
+   ],
+   "meanings": [
+    "certainly, understood (very formal)"
+   ],
+   "group": "phrases"
+  },
+  {
+   "lemma": "失礼いたします",
+   "readings": [
+    "しつれいいたします"
+   ],
+   "meanings": [
+    "excuse me (formal)"
+   ],
+   "group": "phrases",
+   "alternates": [
+    "失礼致します"
+   ]
+  },
+  {
+   "lemma": "申し訳ございません",
+   "readings": [
+    "もうしわけございません"
+   ],
+   "meanings": [
+    "I am very sorry (formal)"
+   ],
+   "group": "phrases",
+   "alternates": [
+    "申し訳ありません"
+   ]
+  },
+  {
+   "lemma": "お先に失礼します",
+   "readings": [
+    "おさきにしつれいします"
+   ],
+   "meanings": [
+    "excuse me for leaving first"
+   ],
+   "group": "phrases"
+  },
+  {
+   "lemma": "お手数をおかけします",
+   "readings": [
+    "おてすうをおかけします"
+   ],
+   "meanings": [
+    "sorry to trouble you"
+   ],
+   "group": "phrases"
+  }
+ ]
+}

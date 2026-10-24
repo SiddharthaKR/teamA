@@ -24,7 +24,7 @@ from ..core.items import (
     LessonLineExplanation,
     QuestionForm,
 )
-from ..core.language import LanguageToolkit, jlpt_label, to_hiragana
+from ..core.language import LanguageToolkit, jlpt_label, reference_label, to_hiragana
 from ..core.japanese import contains_japanese, contains_kanji, is_japanese_name, is_kana_only, is_non_japanese_name
 from ..core.learner import JapaneseLevel, ProfileRecord
 from ..core.ports import DataClass
@@ -152,9 +152,10 @@ def _reference(category: ItemCategory, expression: str, model_reading: str, tool
     if accepted and to_hiragana(model_reading) not in accepted:
         # Derived furigana: the dictionary reading replaces a reading it does not accept.
         reading = sorted(entry.readings)[0] if entry and entry.readings else sorted(accepted)[0]
-    if entry is None or entry.level is None:
+    label = reference_label(entry) if entry else None
+    if label is None:
         return None, "unrated", 0.0, reading
-    return jlpt_label(entry.level), entry.provenance, 0.8, reading
+    return label, entry.provenance, 0.8, reading
 
 
 def _select_target_items(
