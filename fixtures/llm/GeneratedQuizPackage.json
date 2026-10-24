@@ -1,0 +1,179 @@
+[
+  {
+    "match": [],
+    "response": {
+      "questions": [
+        {
+          "question_id": "q-kaigi-meaning",
+          "item_id": "kanji:6f7de8e48acebd27",
+          "form": "meaning",
+          "prompt": "What does 会議 mean?",
+          "options": [
+            "meeting",
+            "schedule",
+            "report",
+            "contract"
+          ],
+          "correct_option_index": 0,
+          "explanation": "会議 (かいぎ) means a meeting."
+        },
+        {
+          "question_id": "q-temoii-cloze",
+          "item_id": "grammar:e84fb07c3d40cd68",
+          "form": "contextual_cloze",
+          "prompt": "Choose the ending that asks permission: 時間を変え___。",
+          "options": [
+            "てもいいですか",
+            "てはいけません",
+            "ないでください",
+            "たことがあります"
+          ],
+          "correct_option_index": 0,
+          "explanation": "変えてもいいですか asks whether it is all right to change the time."
+        },
+        {
+          "question_id": "q-wadou-meaning",
+          "item_id": "grammar:8167197404f1550b",
+          "form": "meaning",
+          "prompt": "What does 〜はどうですか do in 午後三時からはどうですか。?",
+          "options": [
+            "Suggests an option",
+            "Asks for a reason",
+            "Gives a warning",
+            "Reports a result"
+          ],
+          "correct_option_index": 0,
+          "explanation": "〜はどうですか proposes an option (3 p.m.) for the listener to accept."
+        },
+        {
+          "question_id": "q-junbi-reading",
+          "item_id": "kanji:04f46f8ed7b7ddf8",
+          "form": "reading",
+          "prompt": "How is 準備 read?",
+          "options": [
+            "じゅんび",
+            "じゅんぴ",
+            "しゅんび",
+            "じゅうび"
+          ],
+          "correct_option_index": 0,
+          "explanation": "準備 is read じゅんび."
+        },
+        {
+          "question_id": "q-teoku-cloze",
+          "item_id": "grammar:243367c0ea060b4c",
+          "form": "contextual_cloze",
+          "prompt": "Choose the ending that means 'get ready in advance': それまでに準備し___。",
+          "options": [
+            "ておきます",
+            "てしまいました",
+            "たいです",
+            "ませんでした"
+          ],
+          "correct_option_index": 0,
+          "explanation": "準備しておきます means preparing ahead of the meeting."
+        },
+        {
+          "question_id": "q-renraku-meaning",
+          "item_id": "kanji:1dd5b257680c9fd9",
+          "form": "meaning",
+          "prompt": "What does 連絡します mean?",
+          "options": [
+            "to contact someone",
+            "to cancel something",
+            "to book a room",
+            "to wait for someone"
+          ],
+          "correct_option_index": 0,
+          "explanation": "連絡します (れんらくします) means to get in touch with someone."
+        }
+      ],
+      "retry_questions": [
+        {
+          "question_id": "r-kaigi-reading",
+          "item_id": "kanji:6f7de8e48acebd27",
+          "form": "reading",
+          "prompt": "How is 会議 read?",
+          "options": [
+            "かいぎ",
+            "かいき",
+            "がいぎ",
+            "かいご"
+          ],
+          "correct_option_index": 0,
+          "explanation": "会議 is read かいぎ."
+        },
+        {
+          "question_id": "r-temoii-meaning",
+          "item_id": "grammar:e84fb07c3d40cd68",
+          "form": "meaning",
+          "prompt": "What does 〜てもいいですか express?",
+          "options": [
+            "Asking permission",
+            "Giving an order",
+            "Refusing a request",
+            "Describing the past"
+          ],
+          "correct_option_index": 0,
+          "explanation": "〜てもいいですか asks for permission."
+        },
+        {
+          "question_id": "r-wadou-cloze",
+          "item_id": "grammar:8167197404f1550b",
+          "form": "contextual_cloze",
+          "prompt": "Choose the ending that proposes a time: 明日の十時___。",
+          "options": [
+            "はどうですか",
+            "はだめでした",
+            "までです",
+            "からです"
+          ],
+          "correct_option_index": 0,
+          "explanation": "明日の十時はどうですか proposes 10 o'clock tomorrow."
+        },
+        {
+          "question_id": "r-junbi-meaning",
+          "item_id": "kanji:04f46f8ed7b7ddf8",
+          "form": "meaning",
+          "prompt": "What does 準備 mean?",
+          "options": [
+            "preparation",
+            "reservation",
+            "contact",
+            "change"
+          ],
+          "correct_option_index": 0,
+          "explanation": "準備 means preparation; 予約 is a reservation and 連絡 is contact."
+        },
+        {
+          "question_id": "r-teoku-meaning",
+          "item_id": "grammar:243367c0ea060b4c",
+          "form": "meaning",
+          "prompt": "What does 〜ておきます add to 準備します?",
+          "options": [
+            "Doing it in advance",
+            "Doing it by mistake",
+            "Wanting to do it",
+            "Being unable to do it"
+          ],
+          "correct_option_index": 0,
+          "explanation": "〜ておきます means doing something ahead of time."
+        },
+        {
+          "question_id": "r-renraku-reading",
+          "item_id": "kanji:1dd5b257680c9fd9",
+          "form": "reading",
+          "prompt": "How is 連絡 read?",
+          "options": [
+            "れんらく",
+            "れんあく",
+            "れいらく",
+            "ねんらく"
+          ],
+          "correct_option_index": 0,
+          "explanation": "連絡 is read れんらく."
+        }
+      ]
+    }
+  }
+]

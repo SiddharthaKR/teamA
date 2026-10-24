@@ -16,6 +16,7 @@ from .generation import (
     GenerationError,
     GeneratedQuiz,
     LessonGenerationService,
+    ModelTransport,
     OpenAICompatibleTransport,
     Recovery,
     ScenarioMode,
@@ -24,6 +25,7 @@ from .generation import (
     evaluate_delivery,
     evaluate_graduation,
 )
+from .llm_mock import MockTransport, RecordingTransport
 from .lesson import (
     ActiveLesson,
     ActiveLessonDraft,
@@ -163,9 +165,16 @@ def _generation_service(
     explanation_workers: int,
     quiz_primary_model: str,
     quiz_fallback_model: str,
+    llm_mode: str = "live",
+    recording_path: str = "",
 ) -> LessonGenerationService:
+    transport: ModelTransport = OpenAICompatibleTransport(
+        base_url, _api_key, timeout_seconds
+    )
+    if llm_mode == "record":
+        transport = RecordingTransport(transport, Path(recording_path))
     return LessonGenerationService(
-        OpenAICompatibleTransport(base_url, _api_key, timeout_seconds),
+        transport,
         primary_model,
         fallback_model,
         primary_timeout_seconds=primary_timeout_seconds,
@@ -174,6 +183,15 @@ def _generation_service(
         explanation_workers=explanation_workers,
         quiz_primary_model=quiz_primary_model,
         quiz_fallback_model=quiz_fallback_model,
+    )
+
+
+@st.cache_resource
+def _mock_generation_service(fixture_dir: str) -> LessonGenerationService:
+    """Offline service: real prompts, validators and fallback over replayed fixtures."""
+
+    return LessonGenerationService(
+        MockTransport(Path(fixture_dir)), "mock-primary", "mock-fallback"
     )
 
 
@@ -1444,7 +1462,9 @@ def render_health_panel(settings: Settings, engine: Engine) -> None:
         else:
             st.error(f"Database: {health.message.lower()}")
 
-        if settings.model_configured:
+        if settings.llm_mode == "mock":
+            st.info("Model features: mock mode (offline fixtures, no model calls)")
+        elif settings.model_configured:
             st.success("Model features: configured")
         else:
             st.warning("Model features unavailable: configuration is missing")
@@ -1533,7 +1553,9 @@ def main() -> None:
     profile_service = ProfileService(engine)
     lesson_service = LessonService(engine)
     generation_service = None
-    if settings.model_configured:
+    if settings.llm_mode == "mock":
+        generation_service = _mock_generation_service(settings.mock_fixture_dir)
+    elif settings.model_configured:
         api_key = settings.model_api_key
         if (
             settings.model_base_url is not None
@@ -1555,6 +1577,8 @@ def main() -> None:
                 # first, then the primary. Overridable via JLT_QUIZ_* settings.
                 settings.quiz_primary_model or settings.fallback_model,
                 settings.quiz_fallback_model or settings.primary_model,
+                settings.llm_mode,
+                settings.llm_recording_path,
             )
     profile = profile_service.get_profile(user_id)
     if profile is None:

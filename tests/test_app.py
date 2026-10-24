@@ -541,3 +541,29 @@ def test_glossary_collapses_repeated_expressions() -> None:
     label, entry, line_numbers = glossary[0]
     assert (label, entry.expression) == ("Vocabulary", "確認")
     assert line_numbers == [1, 2, 3]
+
+
+def test_mock_mode_generates_a_lesson_offline(monkeypatch, tmp_path: Path) -> None:
+    database_path = tmp_path / "app.db"
+    prepare_database(monkeypatch, database_path)
+    for name in ("JLT_MODEL_BASE_URL", "JLT_MODEL_API_KEY", "JLT_PRIMARY_MODEL", "JLT_FALLBACK_MODEL"):
+        monkeypatch.setenv(name, "")
+    monkeypatch.setenv("JLT_LLM_MODE", "mock")
+    monkeypatch.setenv("JLT_MOCK_FIXTURE_DIR", str(PROJECT_ROOT / "fixtures" / "llm"))
+    get_settings.cache_clear()
+    user = create_completed_user(database_path)
+    app = AppTest.from_file(str(PROJECT_ROOT / "app.py")).run()
+    app.session_state["authenticated_user_id"] = user.id
+    app.session_state["authenticated_username"] = user.username
+    app.run()
+
+    assert any("mock mode" in info.value for info in app.info)
+    app.sidebar.radio[0].set_value("Learn").run()
+    app.button(key="generate_scenario_lesson").click().run()
+
+    assert not app.exception
+    assert any(
+        caption.value == "Lesson generated with Mock (offline fixtures)"
+        for caption in app.caption
+    )
+    get_settings.cache_clear()

@@ -1,0 +1,679 @@
+[
+  {
+    "match": [
+      "Write exactly 6 dialogue lines"
+    ],
+    "response": {
+      "topic_id": "meeting-reschedule",
+      "japanese_title": "会議の時間の変更",
+      "english_title": "Changing a Meeting Time",
+      "difficulty": "JLPT N5",
+      "recap": "You practised asking permission, proposing a time and promising to prepare in advance.",
+      "japanese_speaker_name": "田中",
+      "other_speaker_name": "リン",
+      "lines": [
+        {
+          "japanese_text": "リンさん、明日の会議の時間を変えてもいいですか。",
+          "english_meaning": "Lin, may I change the time of tomorrow's meeting?",
+          "kanji": [
+            {
+              "expression": "会議",
+              "reading": "かいぎ",
+              "meaning": "meeting",
+              "explanation": "A scheduled work meeting with colleagues.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ],
+          "vocabulary": [
+            {
+              "expression": "変える",
+              "reading": "かえる",
+              "meaning": "to change",
+              "explanation": "Used here for moving the meeting to another time.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": [
+            {
+              "expression": "〜てもいいですか",
+              "reading": "てもいいですか",
+              "meaning": "May I ...?",
+              "explanation": "Te-form plus もいいですか politely asks for permission.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": true
+            }
+          ]
+        },
+        {
+          "japanese_text": "はい、大丈夫です。何時がいいですか。",
+          "english_meaning": "Yes, that's fine. What time would be good?",
+          "kanji": [],
+          "vocabulary": [
+            {
+              "expression": "大丈夫",
+              "reading": "だいじょうぶ",
+              "meaning": "all right; no problem",
+              "explanation": "A polite way to say a change is acceptable.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            },
+            {
+              "expression": "何時",
+              "reading": "なんじ",
+              "meaning": "what time",
+              "explanation": "Asks for a clock time when agreeing on a schedule.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        },
+        {
+          "japanese_text": "午後三時からはどうですか。",
+          "english_meaning": "How about from 3 p.m.?",
+          "kanji": [
+            {
+              "expression": "午後",
+              "reading": "ごご",
+              "meaning": "afternoon; p.m.",
+              "explanation": "Marks a time after noon.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "vocabulary": [],
+          "grammar": [
+            {
+              "expression": "〜はどうですか",
+              "reading": "はどうですか",
+              "meaning": "How about ...?",
+              "explanation": "Suggests an option and invites the listener to decide.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": true
+            }
+          ]
+        },
+        {
+          "japanese_text": "三時ですね。では、それまでに準備しておきます。",
+          "english_meaning": "Three o'clock, right? Then I'll get things ready by then.",
+          "kanji": [
+            {
+              "expression": "準備",
+              "reading": "じゅんび",
+              "meaning": "preparation",
+              "explanation": "準備する means to get things ready for the meeting.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ],
+          "vocabulary": [
+            {
+              "expression": "それまでに",
+              "reading": "それまでに",
+              "meaning": "by then",
+              "explanation": "Sets the deadline as the agreed meeting time.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": [
+            {
+              "expression": "〜ておきます",
+              "reading": "ておきます",
+              "meaning": "do in advance",
+              "explanation": "Te-form plus おきます means doing something ahead of time.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ]
+        },
+        {
+          "japanese_text": "ありがとうございます。ほかの人にも連絡します。",
+          "english_meaning": "Thank you. I'll contact the others too.",
+          "kanji": [
+            {
+              "expression": "連絡",
+              "reading": "れんらく",
+              "meaning": "contact; getting in touch",
+              "explanation": "連絡する means to let people know about the change.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ],
+          "vocabulary": [
+            {
+              "expression": "ほかの人",
+              "reading": "ほかのひと",
+              "meaning": "other people",
+              "explanation": "Refers to the other meeting attendees.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        },
+        {
+          "japanese_text": "はい、よろしくお願いします。",
+          "english_meaning": "Yes, thank you for handling that.",
+          "kanji": [],
+          "vocabulary": [
+            {
+              "expression": "よろしくお願いします",
+              "reading": "よろしくおねがいします",
+              "meaning": "thank you in advance",
+              "explanation": "A standard polite close when someone will take action.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        }
+      ]
+    }
+  },
+  {
+    "match": [
+      "Write exactly 8 dialogue lines"
+    ],
+    "response": {
+      "topic_id": "meeting-reschedule",
+      "japanese_title": "会議の時間の変更",
+      "english_title": "Changing a Meeting Time",
+      "difficulty": "JLPT N4",
+      "recap": "You practised asking permission, proposing a time and promising to prepare in advance.",
+      "japanese_speaker_name": "田中",
+      "other_speaker_name": "リン",
+      "lines": [
+        {
+          "japanese_text": "リンさん、明日の会議の時間を変えてもいいですか。",
+          "english_meaning": "Lin, may I change the time of tomorrow's meeting?",
+          "kanji": [
+            {
+              "expression": "会議",
+              "reading": "かいぎ",
+              "meaning": "meeting",
+              "explanation": "A scheduled work meeting with colleagues.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ],
+          "vocabulary": [
+            {
+              "expression": "変える",
+              "reading": "かえる",
+              "meaning": "to change",
+              "explanation": "Used here for moving the meeting to another time.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": [
+            {
+              "expression": "〜てもいいですか",
+              "reading": "てもいいですか",
+              "meaning": "May I ...?",
+              "explanation": "Te-form plus もいいですか politely asks for permission.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": true
+            }
+          ]
+        },
+        {
+          "japanese_text": "はい、大丈夫です。何時がいいですか。",
+          "english_meaning": "Yes, that's fine. What time would be good?",
+          "kanji": [],
+          "vocabulary": [
+            {
+              "expression": "大丈夫",
+              "reading": "だいじょうぶ",
+              "meaning": "all right; no problem",
+              "explanation": "A polite way to say a change is acceptable.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            },
+            {
+              "expression": "何時",
+              "reading": "なんじ",
+              "meaning": "what time",
+              "explanation": "Asks for a clock time when agreeing on a schedule.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        },
+        {
+          "japanese_text": "午後三時からはどうですか。",
+          "english_meaning": "How about from 3 p.m.?",
+          "kanji": [
+            {
+              "expression": "午後",
+              "reading": "ごご",
+              "meaning": "afternoon; p.m.",
+              "explanation": "Marks a time after noon.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "vocabulary": [],
+          "grammar": [
+            {
+              "expression": "〜はどうですか",
+              "reading": "はどうですか",
+              "meaning": "How about ...?",
+              "explanation": "Suggests an option and invites the listener to decide.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": true
+            }
+          ]
+        },
+        {
+          "japanese_text": "三時ですね。では、それまでに準備しておきます。",
+          "english_meaning": "Three o'clock, right? Then I'll get things ready by then.",
+          "kanji": [
+            {
+              "expression": "準備",
+              "reading": "じゅんび",
+              "meaning": "preparation",
+              "explanation": "準備する means to get things ready for the meeting.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ],
+          "vocabulary": [
+            {
+              "expression": "それまでに",
+              "reading": "それまでに",
+              "meaning": "by then",
+              "explanation": "Sets the deadline as the agreed meeting time.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": [
+            {
+              "expression": "〜ておきます",
+              "reading": "ておきます",
+              "meaning": "do in advance",
+              "explanation": "Te-form plus おきます means doing something ahead of time.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ]
+        },
+        {
+          "japanese_text": "ありがとうございます。ほかの人にも連絡します。",
+          "english_meaning": "Thank you. I'll contact the others too.",
+          "kanji": [
+            {
+              "expression": "連絡",
+              "reading": "れんらく",
+              "meaning": "contact; getting in touch",
+              "explanation": "連絡する means to let people know about the change.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ],
+          "vocabulary": [
+            {
+              "expression": "ほかの人",
+              "reading": "ほかのひと",
+              "meaning": "other people",
+              "explanation": "Refers to the other meeting attendees.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        },
+        {
+          "japanese_text": "はい、よろしくお願いします。",
+          "english_meaning": "Yes, thank you for handling that.",
+          "kanji": [],
+          "vocabulary": [
+            {
+              "expression": "よろしくお願いします",
+              "reading": "よろしくおねがいします",
+              "meaning": "thank you in advance",
+              "explanation": "A standard polite close when someone will take action.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        },
+        {
+          "japanese_text": "それから、会議室も予約してもらえますか。",
+          "english_meaning": "Also, could you book the meeting room?",
+          "kanji": [
+            {
+              "expression": "会議室",
+              "reading": "かいぎしつ",
+              "meaning": "meeting room",
+              "explanation": "The room reserved for the meeting.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            },
+            {
+              "expression": "予約",
+              "reading": "よやく",
+              "meaning": "reservation; booking",
+              "explanation": "予約する means to book the room in advance.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ],
+          "vocabulary": [],
+          "grammar": [
+            {
+              "expression": "〜てもらえますか",
+              "reading": "てもらえますか",
+              "meaning": "Could you ...?",
+              "explanation": "Te-form plus もらえますか politely asks someone for a favour.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ]
+        },
+        {
+          "japanese_text": "分かりました。すぐ予約します。",
+          "english_meaning": "Understood. I'll book it right away.",
+          "kanji": [],
+          "vocabulary": [
+            {
+              "expression": "分かりました",
+              "reading": "わかりました",
+              "meaning": "understood",
+              "explanation": "Confirms a request politely.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            },
+            {
+              "expression": "すぐ",
+              "reading": "すぐ",
+              "meaning": "right away",
+              "explanation": "Says the action will happen immediately.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        }
+      ]
+    }
+  },
+  {
+    "match": [
+      "Write exactly 10 dialogue lines"
+    ],
+    "response": {
+      "topic_id": "meeting-reschedule",
+      "japanese_title": "会議の時間の変更",
+      "english_title": "Changing a Meeting Time",
+      "difficulty": "JLPT N3",
+      "recap": "You practised asking permission, proposing a time and promising to prepare in advance.",
+      "japanese_speaker_name": "田中",
+      "other_speaker_name": "リン",
+      "lines": [
+        {
+          "japanese_text": "リンさん、明日の会議の時間を変えてもいいですか。",
+          "english_meaning": "Lin, may I change the time of tomorrow's meeting?",
+          "kanji": [
+            {
+              "expression": "会議",
+              "reading": "かいぎ",
+              "meaning": "meeting",
+              "explanation": "A scheduled work meeting with colleagues.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ],
+          "vocabulary": [
+            {
+              "expression": "変える",
+              "reading": "かえる",
+              "meaning": "to change",
+              "explanation": "Used here for moving the meeting to another time.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": [
+            {
+              "expression": "〜てもいいですか",
+              "reading": "てもいいですか",
+              "meaning": "May I ...?",
+              "explanation": "Te-form plus もいいですか politely asks for permission.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": true
+            }
+          ]
+        },
+        {
+          "japanese_text": "はい、大丈夫です。何時がいいですか。",
+          "english_meaning": "Yes, that's fine. What time would be good?",
+          "kanji": [],
+          "vocabulary": [
+            {
+              "expression": "大丈夫",
+              "reading": "だいじょうぶ",
+              "meaning": "all right; no problem",
+              "explanation": "A polite way to say a change is acceptable.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            },
+            {
+              "expression": "何時",
+              "reading": "なんじ",
+              "meaning": "what time",
+              "explanation": "Asks for a clock time when agreeing on a schedule.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        },
+        {
+          "japanese_text": "午後三時からはどうですか。",
+          "english_meaning": "How about from 3 p.m.?",
+          "kanji": [
+            {
+              "expression": "午後",
+              "reading": "ごご",
+              "meaning": "afternoon; p.m.",
+              "explanation": "Marks a time after noon.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "vocabulary": [],
+          "grammar": [
+            {
+              "expression": "〜はどうですか",
+              "reading": "はどうですか",
+              "meaning": "How about ...?",
+              "explanation": "Suggests an option and invites the listener to decide.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": true
+            }
+          ]
+        },
+        {
+          "japanese_text": "三時ですね。では、それまでに準備しておきます。",
+          "english_meaning": "Three o'clock, right? Then I'll get things ready by then.",
+          "kanji": [
+            {
+              "expression": "準備",
+              "reading": "じゅんび",
+              "meaning": "preparation",
+              "explanation": "準備する means to get things ready for the meeting.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ],
+          "vocabulary": [
+            {
+              "expression": "それまでに",
+              "reading": "それまでに",
+              "meaning": "by then",
+              "explanation": "Sets the deadline as the agreed meeting time.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": [
+            {
+              "expression": "〜ておきます",
+              "reading": "ておきます",
+              "meaning": "do in advance",
+              "explanation": "Te-form plus おきます means doing something ahead of time.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ]
+        },
+        {
+          "japanese_text": "ありがとうございます。ほかの人にも連絡します。",
+          "english_meaning": "Thank you. I'll contact the others too.",
+          "kanji": [
+            {
+              "expression": "連絡",
+              "reading": "れんらく",
+              "meaning": "contact; getting in touch",
+              "explanation": "連絡する means to let people know about the change.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": true
+            }
+          ],
+          "vocabulary": [
+            {
+              "expression": "ほかの人",
+              "reading": "ほかのひと",
+              "meaning": "other people",
+              "explanation": "Refers to the other meeting attendees.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        },
+        {
+          "japanese_text": "はい、よろしくお願いします。",
+          "english_meaning": "Yes, thank you for handling that.",
+          "kanji": [],
+          "vocabulary": [
+            {
+              "expression": "よろしくお願いします",
+              "reading": "よろしくおねがいします",
+              "meaning": "thank you in advance",
+              "explanation": "A standard polite close when someone will take action.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        },
+        {
+          "japanese_text": "それから、会議室も予約してもらえますか。",
+          "english_meaning": "Also, could you book the meeting room?",
+          "kanji": [
+            {
+              "expression": "会議室",
+              "reading": "かいぎしつ",
+              "meaning": "meeting room",
+              "explanation": "The room reserved for the meeting.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            },
+            {
+              "expression": "予約",
+              "reading": "よやく",
+              "meaning": "reservation; booking",
+              "explanation": "予約する means to book the room in advance.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ],
+          "vocabulary": [],
+          "grammar": [
+            {
+              "expression": "〜てもらえますか",
+              "reading": "てもらえますか",
+              "meaning": "Could you ...?",
+              "explanation": "Te-form plus もらえますか politely asks someone for a favour.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ]
+        },
+        {
+          "japanese_text": "分かりました。すぐ予約します。",
+          "english_meaning": "Understood. I'll book it right away.",
+          "kanji": [],
+          "vocabulary": [
+            {
+              "expression": "分かりました",
+              "reading": "わかりました",
+              "meaning": "understood",
+              "explanation": "Confirms a request politely.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            },
+            {
+              "expression": "すぐ",
+              "reading": "すぐ",
+              "meaning": "right away",
+              "explanation": "Says the action will happen immediately.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        },
+        {
+          "japanese_text": "助かります。何かあったら、いつでも聞いてください。",
+          "english_meaning": "That helps. If anything comes up, ask me any time.",
+          "kanji": [],
+          "vocabulary": [
+            {
+              "expression": "助かります",
+              "reading": "たすかります",
+              "meaning": "that helps; thank you",
+              "explanation": "Thanks someone by saying their help makes things easier.",
+              "jlpt_level": "JLPT N3",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": [
+            {
+              "expression": "〜たら",
+              "reading": "たら",
+              "meaning": "if; when",
+              "explanation": "Ta-form plus ら sets a condition: if something happens.",
+              "jlpt_level": "JLPT N4",
+              "is_quiz_target": false
+            }
+          ]
+        },
+        {
+          "japanese_text": "はい、ありがとうございます。",
+          "english_meaning": "Yes, thank you.",
+          "kanji": [],
+          "vocabulary": [
+            {
+              "expression": "ありがとうございます",
+              "reading": "ありがとうございます",
+              "meaning": "thank you",
+              "explanation": "The polite form of thanks.",
+              "jlpt_level": "JLPT N5",
+              "is_quiz_target": false
+            }
+          ],
+          "grammar": []
+        }
+      ]
+    }
+  }
+]

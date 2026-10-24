@@ -133,8 +133,17 @@ All settings use the `JLT_` environment prefix:
 | `JLT_PRIMARY_MODEL` | For generation | Primary Tsuzumi model ID |
 | `JLT_FALLBACK_MODEL` | For generation | Fallback GPT model ID |
 | `JLT_MODEL_TIMEOUT_SECONDS` | No | Per-attempt provider timeout; defaults to 180 seconds |
+| `JLT_LLM_MODE` | No | `live` (default), `mock` (offline fixtures, no keys needed) or `record` (live calls appended to a JSONL file) |
+| `JLT_MOCK_FIXTURE_DIR` | No | Fixture folder for mock mode; defaults to `fixtures/llm` |
+| `JLT_LLM_RECORDING_PATH` | No | JSONL output for record mode; defaults to `data/llm-recordings/recordings.jsonl` |
 
 Model status is configured only when all four model variables are present. Scenario generation is disabled when any value is absent; all offline features remain available.
+
+### Offline mock mode (v2, Phase 0)
+
+Set `JLT_LLM_MODE=mock` to run the full learning loop without any model credentials. `MockTransport` replays the hand-checked fixtures in `fixtures/llm/` through the real prompts, validators and fallback policy, so tests and demos exercise the same code paths as production. Rebuild the fixtures with `python scripts/build_mock_fixtures.py`; a test fails if the committed files drift from the builder. Mock mode covers surprise and scenario lessons, quizzes and roleplay; Explain mode and the deck localizer have no fixtures yet and fail safely with the normal error message.
+
+`JLT_LLM_MODE=record` calls the live endpoint and appends every prompt and response to `JLT_LLM_RECORDING_PATH`. Record only PUBLIC inputs such as the golden set in `evals/golden/v0.json`, never learner-supplied private text.
 
 ## Database and migrations
 

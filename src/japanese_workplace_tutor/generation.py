@@ -1005,6 +1005,8 @@ def _provider_label(model_id: str) -> str:
     provider name stays correct automatically.
     """
 
+    if model_id.lower().startswith("mock"):
+        return "Mock (offline fixtures)"
     return "GPT-5 nano" if "gpt" in model_id.lower() else "Tsuzumi 2"
 
 
@@ -2504,4 +2506,4 @@ class LessonGenerationService:
         ):
             raise ValueError(
                 "Test at least one grammar item with a contextual_cloze question."
-            )
+            )
