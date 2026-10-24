@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from japanese_workplace_tutor.auth import AuthenticationService
 from japanese_workplace_tutor.database import create_database_engine
+from japanese_workplace_tutor.core.progress import skill_dimension
 from japanese_workplace_tutor.lesson import (
     FIXTURE_LESSON,
     REVIEW_ITEMS,
@@ -481,6 +482,6 @@ def test_register_questions_score_as_contextual_use() -> None:
     )
 
     assert (
-        LessonService._skill_dimension(question, ItemCategory.VOCABULARY)
+        skill_dimension(question.form, ItemCategory.VOCABULARY)
         is SkillDimension.CONTEXTUAL_USE
     )

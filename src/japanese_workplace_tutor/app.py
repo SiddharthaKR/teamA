@@ -16,8 +16,6 @@ from .generation import (
     GenerationError,
     GeneratedQuiz,
     LessonGenerationService,
-    ModelTransport,
-    OpenAICompatibleTransport,
     Recovery,
     ScenarioMode,
     SlideInput,
@@ -25,7 +23,9 @@ from .generation import (
     evaluate_delivery,
     evaluate_graduation,
 )
-from .llm_mock import MockTransport, RecordingTransport
+from .core.ports import ModelTransport
+from .llm.mock import MockTransport, RecordingTransport
+from .llm.openai_transport import OpenAICompatibleTransport
 from .lesson import (
     ActiveLesson,
     ActiveLessonDraft,

@@ -2,187 +2,44 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
-from enum import StrEnum
+from datetime import UTC, datetime
 from hashlib import sha256
-from math import ceil
-from random import Random
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
+# Domain value types live in the pure core; they are re-exported here because the
+# app and tests import them from this module.
+from .core.items import (  # noqa: F401
+    AnswerConfidence,
+    FixtureItem,
+    FixtureLesson,
+    FixtureQuestion,
+    ItemCategory,
+    LessonContent,
+    LessonExplanationPoint,
+    LessonLineExplanation,
+    QuestionForm,
+    ReviewOutcome,
+    SkillDimension,
+    display_options,
+)
+from .core.progress import (  # noqa: F401
+    Answer,
+    ItemState,
+    PastAttempt,
+    ProgressRecord,
+    SM2MasteryPolicy,
+    skill_dimension,
+)
+from .schemas.lessons import GeneratedLessonDraft, GeneratedQuiz
 from .models import (
     CompletedLessonMetadata,
     LearningItem,
     ReviewAttempt,
     UserItemProgress,
 )
-
-
-class ItemCategory(StrEnum):
-    KANJI = "kanji"
-    VOCABULARY = "vocabulary"
-    GRAMMAR = "grammar"
-
-
-class QuestionForm(StrEnum):
-    MEANING = "meaning"
-    READING = "reading"
-    CONTEXTUAL_CLOZE = "contextual_cloze"
-    REGISTER = "register"
-
-
-class AnswerConfidence(StrEnum):
-    SURE = "sure"
-    GUESSED = "guessed"
-
-
-class SkillDimension(StrEnum):
-    RECOGNITION = "recognition"
-    READING = "reading"
-    CONTEXTUAL_USE = "contextual_use"
-    GRAMMAR_APPLICATION = "grammar_application"
-
-
-class ReviewOutcome(StrEnum):
-    AGAIN = "again"
-    HARD = "hard"
-    GOOD = "good"
-    EASY = "easy"
-
-
-class FixtureItem(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    canonical_id: str = Field(min_length=1, max_length=128)
-    category: ItemCategory
-    expression: str = Field(min_length=1)
-    reading: str = Field(min_length=1)
-    meaning: str = Field(min_length=1)
-    example: str = Field(min_length=1)
-    jlpt_level: str | None
-    jlpt_provenance: str
-    jlpt_confidence: float = Field(ge=0.0, le=1.0)
-
-
-class FixtureQuestion(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    question_id: str = Field(min_length=1, max_length=64)
-    item_id: str
-    form: QuestionForm
-    prompt: str = Field(min_length=1)
-    options: tuple[str, ...] = Field(min_length=4, max_length=4)
-    correct_option_index: int = Field(ge=0, le=3)
-    # Self-checking answer key. When a generator supplies the correct option's
-    # exact text here, the position is resolved deterministically below instead of
-    # trusting a hand-counted index a small model can miscount (or that silently
-    # drifts if it reorders the options). Fixtures omit it and keep their index.
-    # Excluded from serialization so it never lands in a persisted dump.
-    correct_value: str | None = Field(default=None, exclude=True)
-    explanation: str = Field(min_length=1)
-
-    @model_validator(mode="before")
-    @classmethod
-    def _resolve_correct_value(cls, data: object) -> object:
-        if not isinstance(data, dict):
-            return data
-        value = data.get("correct_value")
-        options = data.get("options")
-        if value is None or not isinstance(options, (list, tuple)):
-            return data
-        normalized = [str(option).strip() for option in options]
-        target = str(value).strip()
-        if target not in normalized:
-            raise ValueError(
-                "correct_value must exactly match one of the options."
-            )
-        return {**data, "correct_option_index": normalized.index(target)}
-
-    @model_validator(mode="after")
-    def validate_options(self) -> "FixtureQuestion":
-        # Answers are resolved by option text, so duplicates would be ambiguous.
-        if len(set(self.options)) != len(self.options):
-            raise ValueError("Question options must be distinct.")
-        return self
-
-
-def display_options(question: FixtureQuestion) -> tuple[str, ...]:
-    """Shuffle option order for display only, keyed so Streamlit reruns stay stable."""
-
-    seed = int(sha256(question.question_id.encode("utf-8")).hexdigest()[:16], 16)
-    options = list(question.options)
-    Random(seed).shuffle(options)
-    return tuple(options)
-
-
-class LessonExplanationPoint(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    expression: str = Field(min_length=1)
-    reading: str = Field(min_length=1)
-    meaning: str = Field(min_length=1)
-    explanation: str = Field(min_length=1)
-
-
-class LessonLineExplanation(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    japanese_text: str = Field(min_length=1)
-    english_meaning: str = Field(min_length=1)
-    kanji: tuple[LessonExplanationPoint, ...]
-    vocabulary: tuple[LessonExplanationPoint, ...]
-    grammar: tuple[LessonExplanationPoint, ...]
-
-
-class LessonContent(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    topic_id: str = Field(min_length=1, max_length=128)
-    title: str = Field(min_length=1, max_length=256)
-    difficulty: str = Field(min_length=1, max_length=128)
-    passage: str = Field(min_length=1)
-    items: tuple[FixtureItem, ...] = Field(min_length=3, max_length=7)
-    recap: str = Field(min_length=1)
-
-    @model_validator(mode="after")
-    def validate_items(self) -> "LessonContent":
-        item_ids = [item.canonical_id for item in self.items]
-        if not 3 <= len(item_ids) <= 7:
-            raise ValueError("A lesson must contain 3-7 target items.")
-        if len(item_ids) != len(set(item_ids)):
-            raise ValueError("Lesson item IDs must be unique.")
-        return self
-
-
-class FixtureLesson(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    topic_id: str = Field(min_length=1, max_length=128)
-    title: str = Field(min_length=1, max_length=256)
-    difficulty: str = Field(min_length=1, max_length=128)
-    passage: str = Field(min_length=1)
-    items: tuple[FixtureItem, ...]
-    questions: tuple[FixtureQuestion, ...]
-    recap: str = Field(min_length=1)
-
-    @model_validator(mode="after")
-    def validate_lesson(self) -> "FixtureLesson":
-        item_ids = [item.canonical_id for item in self.items]
-        question_ids = [question.question_id for question in self.questions]
-        if not 3 <= len(item_ids) <= 7:
-            raise ValueError("A lesson must contain 3-7 target items.")
-        if not 4 <= len(question_ids) <= 6:
-            raise ValueError("A lesson must contain 4-6 questions.")
-        if len(item_ids) != len(set(item_ids)):
-            raise ValueError("Lesson item IDs must be unique.")
-        if len(question_ids) != len(set(question_ids)):
-            raise ValueError("Lesson question IDs must be unique.")
-        if any(question.item_id not in item_ids for question in self.questions):
-            raise ValueError("Every question must reference a lesson item.")
-        return self
 
 
 FIXTURE_LESSON = FixtureLesson(
@@ -482,23 +339,6 @@ class AttemptResult:
 
 
 @dataclass(frozen=True)
-class ProgressRecord:
-    item_id: str
-    category: ItemCategory
-    exposure_count: int
-    correct_count: int
-    incorrect_count: int
-    mastery_score: float
-    dimension_scores: dict[str, float]
-    consecutive_successful_reviews: int
-    sm2_interval_days: int
-    sm2_ease: float
-    last_outcome: ReviewOutcome | None
-    last_answered_at: datetime | None
-    next_review_at: datetime | None
-
-
-@dataclass(frozen=True)
 class CompletionRecord:
     topic_id: str
     difficulty: str
@@ -511,21 +351,12 @@ def _utc_now() -> datetime:
 
 
 class LessonService:
-    POLICY_VERSION = "t05-v1"
-    MASTERY_THRESHOLD = 0.80
-    MASTERY_DELTAS = {
-        ReviewOutcome.AGAIN: -0.08,
-        ReviewOutcome.HARD: 0.08,
-        ReviewOutcome.GOOD: 0.18,
-        ReviewOutcome.EASY: 0.30,
-    }
-    DIMENSION_DELTAS = {
-        ReviewOutcome.AGAIN: -0.10,
-        ReviewOutcome.HARD: 0.10,
-        ReviewOutcome.GOOD: 0.20,
-        ReviewOutcome.EASY: 0.30,
-    }
-    AGAIN_REVIEW_DELAY = timedelta(minutes=10)
+    """Persists compact evidence and progress; the pure policy computes the numbers."""
+
+    POLICY = SM2MasteryPolicy()
+    POLICY_VERSION = POLICY.version
+    MASTERY_THRESHOLD = POLICY.MASTERY_THRESHOLD
+    AGAIN_REVIEW_DELAY = POLICY.AGAIN_REVIEW_DELAY
 
     def __init__(
         self, engine: Engine, clock: Callable[[], datetime] = _utc_now
@@ -544,24 +375,9 @@ class LessonService:
             lesson_session_id=lesson_session_id,
         )
 
-    def start_generated_lesson(self, user_id: int, generated: object) -> ActiveLesson:
-        from .generation import GeneratedLesson
-
-        if not isinstance(generated, GeneratedLesson):
-            raise LessonStateError("A validated generated lesson is required.")
-        return self._start_lesson(
-            user_id,
-            generated.lesson,
-            generated.retry_questions,
-            provider_name=generated.provider_name,
-            line_explanations=generated.line_explanations,
-        )
-
     def start_generated_lesson_draft(
         self, user_id: int, generated: object
     ) -> ActiveLessonDraft:
-        from .generation import GeneratedLessonDraft
-
         if not isinstance(generated, GeneratedLessonDraft):
             raise LessonStateError("A validated generated lesson draft is required.")
         session_id = str(uuid4())
@@ -576,8 +392,6 @@ class LessonService:
     def activate_generated_quiz(
         self, draft: ActiveLessonDraft, generated_quiz: object
     ) -> ActiveLesson:
-        from .generation import GeneratedQuiz
-
         if not isinstance(generated_quiz, GeneratedQuiz):
             raise LessonStateError("A validated generated quiz is required.")
         content = draft.content
@@ -834,21 +648,23 @@ class LessonService:
                     ReviewAttempt.item_id == question.item_id,
                 )
             ).all()
-            outcome = self._map_outcome(
-                progress, historical_attempts, question, lesson_session_id, is_correct, is_retry
+            dimension = skill_dimension(question.form, fixture_item.category)
+            history = [
+                PastAttempt(attempt.lesson_session_id, attempt.question_form, attempt.is_correct)
+                for attempt in historical_attempts
+            ]
+            answer = Answer(
+                question_form=question.form,
+                skill_dimension=dimension,
+                lesson_session_id=lesson_session_id,
+                is_correct=is_correct,
+                is_retry=is_retry,
+                confidence=confidence,
+                answered_at=now,
             )
-            if outcome is ReviewOutcome.EASY and confidence is AnswerConfidence.GUESSED:
-                outcome = ReviewOutcome.GOOD
-            skill_dimension = self._skill_dimension(question, fixture_item.category)
-            self._apply_policy(
-                progress,
-                historical_attempts,
-                question,
-                skill_dimension,
-                outcome,
-                now,
-                confidence,
-            )
+            state = _item_state(progress)
+            outcome = self.POLICY.outcome(state, history, answer)
+            _write_item_state(progress, self.POLICY.apply(state, history, answer, outcome))
             progress.last_answered_at = now
 
             attempt = ReviewAttempt(
@@ -857,7 +673,7 @@ class LessonService:
                 lesson_session_id=lesson_session_id,
                 idempotency_key=idempotency_key,
                 question_form=question.form.value,
-                skill_dimension=skill_dimension.value,
+                skill_dimension=dimension.value,
                 answer_confidence=confidence.value,
                 is_correct=is_correct,
                 is_retry=is_retry,
@@ -1026,7 +842,7 @@ class LessonService:
             REVIEW_QUESTIONS[fixture_item.canonical_id],
             key=lambda question: (
                 progress.dimension_scores.get(
-                    self._skill_dimension(question, fixture_item.category).value,
+                    skill_dimension(question.form, fixture_item.category).value,
                     0.0,
                 ),
                 question.question_id,
@@ -1080,119 +896,6 @@ class LessonService:
         )
 
     @staticmethod
-    def _skill_dimension(
-        question: FixtureQuestion, category: ItemCategory
-    ) -> SkillDimension:
-        if question.form is QuestionForm.READING:
-            return SkillDimension.READING
-        if question.form is QuestionForm.REGISTER:
-            return SkillDimension.CONTEXTUAL_USE
-        if question.form is QuestionForm.CONTEXTUAL_CLOZE:
-            if category is ItemCategory.GRAMMAR:
-                return SkillDimension.GRAMMAR_APPLICATION
-            return SkillDimension.CONTEXTUAL_USE
-        return SkillDimension.RECOGNITION
-
-    @staticmethod
-    def _map_outcome(
-        progress: UserItemProgress,
-        historical_attempts: list[ReviewAttempt],
-        question: FixtureQuestion,
-        lesson_session_id: str,
-        is_correct: bool,
-        is_retry: bool,
-    ) -> ReviewOutcome:
-        if not is_correct:
-            return ReviewOutcome.AGAIN
-        if is_retry:
-            return ReviewOutcome.HARD
-        successful_sessions = {
-            attempt.lesson_session_id
-            for attempt in historical_attempts
-            if attempt.is_correct
-        }
-        successful_forms = {
-            attempt.question_form
-            for attempt in historical_attempts
-            if attempt.is_correct
-        }
-        successful_forms.add(question.form.value)
-        separate_sessions = len(successful_sessions - {lesson_session_id}) >= 2
-        if (
-            progress.consecutive_successful_reviews >= 2
-            and separate_sessions
-            and len(successful_forms) >= 2
-        ):
-            return ReviewOutcome.EASY
-        return ReviewOutcome.GOOD
-
-    def _apply_policy(
-        self,
-        progress: UserItemProgress,
-        historical_attempts: list[ReviewAttempt],
-        question: FixtureQuestion,
-        skill_dimension: SkillDimension,
-        outcome: ReviewOutcome,
-        now: datetime,
-        confidence: AnswerConfidence = AnswerConfidence.SURE,
-    ) -> None:
-        dimension_scores = dict(progress.dimension_scores or {})
-        current_dimension = dimension_scores.get(skill_dimension.value, 0.0)
-        # A guessed correct answer is weaker evidence than a confident one.
-        damping = (
-            0.5
-            if confidence is AnswerConfidence.GUESSED and outcome is not ReviewOutcome.AGAIN
-            else 1.0
-        )
-        dimension_scores[skill_dimension.value] = round(
-            min(1.0, max(0.0, current_dimension + self.DIMENSION_DELTAS[outcome] * damping)),
-            2,
-        )
-        progress.dimension_scores = dimension_scores
-
-        mastery = progress.mastery_score + self.MASTERY_DELTAS[outcome] * damping
-        successful_forms = {
-            attempt.question_form
-            for attempt in historical_attempts
-            if attempt.is_correct
-        }
-        if outcome is not ReviewOutcome.AGAIN:
-            successful_forms.add(question.form.value)
-        if len(successful_forms) < 2 or outcome is not ReviewOutcome.EASY:
-            mastery = min(mastery, self.MASTERY_THRESHOLD - 0.01)
-        progress.mastery_score = round(min(1.0, max(0.0, mastery)), 2)
-
-        if outcome is ReviewOutcome.AGAIN:
-            progress.consecutive_successful_reviews = 0
-            progress.sm2_ease = round(max(1.3, progress.sm2_ease - 0.20), 2)
-            progress.sm2_interval_days = 0
-            progress.next_review_at = now + self.AGAIN_REVIEW_DELAY
-        elif outcome is ReviewOutcome.HARD:
-            progress.consecutive_successful_reviews = 0
-            progress.sm2_ease = round(max(1.3, progress.sm2_ease - 0.15), 2)
-            progress.sm2_interval_days = 1
-            progress.next_review_at = now + timedelta(days=1)
-        elif outcome is ReviewOutcome.GOOD:
-            progress.consecutive_successful_reviews += 1
-            progress.sm2_ease = round(min(3.0, progress.sm2_ease + 0.05), 2)
-            if progress.sm2_interval_days == 0:
-                progress.sm2_interval_days = 1
-            elif progress.sm2_interval_days == 1:
-                progress.sm2_interval_days = 3
-            else:
-                progress.sm2_interval_days = ceil(
-                    progress.sm2_interval_days * progress.sm2_ease
-                )
-            progress.next_review_at = now + timedelta(days=progress.sm2_interval_days)
-        else:
-            progress.consecutive_successful_reviews += 1
-            progress.sm2_ease = round(min(3.0, progress.sm2_ease + 0.15), 2)
-            base_interval = max(4, progress.sm2_interval_days)
-            progress.sm2_interval_days = ceil(base_interval * progress.sm2_ease * 1.3)
-            progress.next_review_at = now + timedelta(days=progress.sm2_interval_days)
-        progress.last_outcome = outcome.value
-
-    @staticmethod
     def _attempt_result(
         attempt: ReviewAttempt,
         question_id: str,
@@ -1221,3 +924,31 @@ class LessonService:
             studied_item_ids=tuple(completion.studied_item_ids),
             completed_at=completion.completed_at,
         )
+
+
+def _item_state(progress: UserItemProgress) -> ItemState:
+    defaults = ItemState()
+
+    def value(name: str):
+        current = getattr(progress, name)
+        return getattr(defaults, name) if current is None else current
+
+    return ItemState(
+        mastery_score=value("mastery_score"),
+        dimension_scores=dict(progress.dimension_scores or {}),
+        consecutive_successful_reviews=value("consecutive_successful_reviews"),
+        sm2_interval_days=value("sm2_interval_days"),
+        sm2_ease=value("sm2_ease"),
+        next_review_at=progress.next_review_at,
+        last_outcome=progress.last_outcome,
+    )
+
+
+def _write_item_state(progress: UserItemProgress, state: ItemState) -> None:
+    progress.mastery_score = state.mastery_score
+    progress.dimension_scores = dict(state.dimension_scores)
+    progress.consecutive_successful_reviews = state.consecutive_successful_reviews
+    progress.sm2_interval_days = state.sm2_interval_days
+    progress.sm2_ease = state.sm2_ease
+    progress.next_review_at = state.next_review_at
+    progress.last_outcome = state.last_outcome

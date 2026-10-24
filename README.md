@@ -21,6 +21,23 @@ Two-model fallback and schema validation keep generation working under failure; 
 ### Demo
 See [`DEMO_GUIDE.md`](./DEMO_GUIDE.md). Sample input: `samples/demo_deck.pptx`; reference output: `samples/expected_output.md`. Keep `JLT_PRIMARY_MODEL=gpt-5-nano` for a fast demo.
 
+## Code layout (v2)
+
+Dependencies point inward toward a pure core; `lint-imports` (run by the test suite) fails the build if they do not.
+
+| Package | Holds | May not import |
+|---|---|---|
+| `core/` | Domain types (items, questions, learner, inputs), Japanese script helpers, the progress policy `t05-v1` as pure functions with `replay()`, ports (`ModelTransport`, `DataClass`) | Anything with IO: Streamlit, SQLAlchemy, requests, or any outer package |
+| `schemas/` | Pydantic contracts the model must satisfy | Features, the gateway, transports |
+| `prompts/` | Versioned prompt builders (`PROMPT_VERSION` per feature), pinned byte for byte by `tests/test_prompts.py` | Features, the gateway, transports |
+| `llm/` | `gateway.py`: the single path for model calls (routing, repair, fallback, hedging, PUBLIC/PRIVATE guard). `openai_transport.py`, `mock.py`: adapters | - |
+| `features/` | Lessons, roleplay, presentation: orchestration and acceptance rules | Transports, Streamlit, SQLAlchemy |
+| `generation.py` | `LessonGenerationService`, which composes the gateway and features; the stable import path for the app | - |
+| `lesson.py`, `profile.py`, `models.py` | Persistence; the progress numbers come from `core/progress.py` | - |
+| `app.py` | Streamlit UI and the composition root that picks a transport | - |
+
+Every model task carries a `DataClass`. v1 tags all tasks `PUBLIC` (generic or user-attested content). The gateway refuses `PRIVATE` tasks unless the transport declares `accepts_private_data`, which only a future on-premises adapter will do.
+
 ## Requirements
 
 - Windows with Python 3.14.3 (pinned in `.python-version`)

@@ -32,7 +32,7 @@ import json
 from pathlib import Path
 from threading import Lock
 
-from japanese_workplace_tutor.generation import ModelTransport
+from ..core.ports import ModelTransport
 
 
 class MockFixtureMissing(RuntimeError):

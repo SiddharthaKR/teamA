@@ -29,11 +29,11 @@ from japanese_workplace_tutor.generation import (  # noqa: E402
     RoleplayVerdict,
     ScenarioMode,
     SituationChallenge,
-    _canonical_item_id,
+    canonical_item_id,
     expected_line_count,
 )
 from japanese_workplace_tutor.lesson import ItemCategory  # noqa: E402
-from japanese_workplace_tutor.llm_mock import MockTransport  # noqa: E402
+from japanese_workplace_tutor.llm.mock import MockTransport  # noqa: E402
 from japanese_workplace_tutor.profile import (  # noqa: E402
     JapaneseLevel,
     LevelSource,
@@ -142,7 +142,7 @@ TARGETS = {
     "teoku": (ItemCategory.GRAMMAR, "〜ておきます"),
     "renraku": (ItemCategory.KANJI, "連絡"),
 }
-ID = {key: _canonical_item_id(category, expression) for key, (category, expression) in TARGETS.items()}
+ID = {key: canonical_item_id(category, expression) for key, (category, expression) in TARGETS.items()}
 
 
 def question(qid, key, form, prompt, options, explanation):

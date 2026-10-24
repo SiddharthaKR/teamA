@@ -13,7 +13,7 @@ from japanese_workplace_tutor.generation import (
     ScenarioMode,
     expected_line_count,
 )
-from japanese_workplace_tutor.llm_mock import (
+from japanese_workplace_tutor.llm.mock import (
     MockFixtureMissing,
     MockTransport,
     RecordingTransport,
