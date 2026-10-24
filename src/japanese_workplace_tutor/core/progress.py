@@ -9,6 +9,7 @@ example FSRS) can be introduced later by replaying the stored evidence.
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
+from enum import StrEnum
 from math import ceil
 from typing import Protocol
 
@@ -30,6 +31,9 @@ class ProgressRecord:
     last_outcome: ReviewOutcome | None
     last_answered_at: datetime | None
     next_review_at: datetime | None
+    # Reference-list spelling of the item (never learner text); None for items
+    # saved before names were stored or not found in the reference data.
+    expression: str | None = None
 
 @dataclass(frozen=True)
 class PastAttempt:
@@ -222,3 +226,29 @@ def replay(
             PastAttempt(answer.lesson_session_id, answer.question_form.value, answer.is_correct)
         )
     return state, tuple(outcomes)
+
+
+class ItemStatus(StrEnum):
+    NEW = "new"  # seen in a lesson, never answered
+    LEARNING = "learning"
+    MASTERED = "mastered"
+    SLIPPING = "slipping"  # answered wrong last time, or a review is well overdue
+
+
+MASTERY_THRESHOLD = SM2MasteryPolicy.MASTERY_THRESHOLD
+
+
+def item_status(record: ProgressRecord, now: datetime) -> ItemStatus:
+    """Learner-facing status: a pure function of the stored progress."""
+
+    if record.last_outcome is None:
+        return ItemStatus.NEW
+    if record.last_outcome is ReviewOutcome.AGAIN:
+        return ItemStatus.SLIPPING
+    if record.next_review_at is not None:
+        grace = timedelta(days=max(1, record.sm2_interval_days // 2))
+        if now - record.next_review_at > grace:
+            return ItemStatus.SLIPPING
+    if record.mastery_score >= MASTERY_THRESHOLD:
+        return ItemStatus.MASTERED
+    return ItemStatus.LEARNING

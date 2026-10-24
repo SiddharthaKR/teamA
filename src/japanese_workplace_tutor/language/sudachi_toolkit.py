@@ -24,7 +24,7 @@ import re
 from threading import Lock
 
 from ..core.japanese import is_kana_only
-from ..core.language import LEVEL_RANK, GrammarPoint, LexiconEntry, Token, to_hiragana
+from ..core.language import LEVEL_RANK, GrammarPoint, LexiconEntry, Token, WordSet, to_hiragana
 
 NON_CONTENT_POS = {"助詞", "助動詞", "補助記号", "記号", "空白", "接尾辞"}
 LIGHT_VERBS = {"する", "為る", "ある", "有る", "いる", "居る", "なる", "成る"}
@@ -64,6 +64,7 @@ class SudachiToolkit:
         )
         self._lexicon = self._build_lexicon(openjlpt)
         self._grammar = self._load_grammar()
+        self._word_sets = self._build_word_sets()
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -227,3 +228,56 @@ class SudachiToolkit:
 
     def grammar_point(self, expression: str) -> GrammarPoint | None:
         return self._grammar.get(normalize_expression(expression))
+
+    def grammar_by_id(self, point_id: str) -> GrammarPoint | None:
+        return self._grammar_ids.get(point_id)
+
+    def word_sets(self) -> tuple[WordSet, ...]:
+        return self._word_sets
+
+    def entries_at(self, level: str) -> tuple[LexiconEntry, ...]:
+        return self._by_level.get(level, ())
+
+    def _build_word_sets(self) -> tuple[WordSet, ...]:
+        entries = {entry.lemma: entry for entry in self._lexicon.values()}
+        by_level: dict[str, list[LexiconEntry]] = defaultdict(list)
+        by_group: dict[str, set[str]] = defaultdict(set)
+        for lemma in sorted(entries):
+            entry = entries[lemma]
+            # Level sets come from the primary list and fixes, not the OpenJLPT gap
+            # fill, so coverage is measured against one reviewed list.
+            if entry.level and not entry.provenance.startswith("openjlpt"):
+                by_level[entry.level].append(entry)
+            if entry.business_group:
+                by_group[entry.business_group].add(lemma)
+        self._by_level = {level: tuple(items) for level, items in by_level.items()}
+        self._grammar_ids = {point.id: point for point in self._grammar.values()}
+        grammar_by_level: dict[str, set[str]] = defaultdict(set)
+        for point in self._grammar_ids.values():
+            if point.level:
+                grammar_by_level[point.level].add(point.id)
+        group_labels = self._resource("business_vocab_v1.json")["groups"]
+        sets = []
+        for level in ("N5", "N4", "N3", "N2", "N1"):
+            sets.append(
+                WordSet(
+                    f"jlpt-{level}",
+                    f"JLPT {level} words",
+                    "words",
+                    frozenset(entry.lemma for entry in by_level.get(level, ())),
+                )
+            )
+            if grammar_by_level.get(level):
+                sets.append(
+                    WordSet(
+                        f"grammar-{level}",
+                        f"JLPT {level} grammar",
+                        "grammar",
+                        frozenset(grammar_by_level[level]),
+                    )
+                )
+        for group, label in group_labels.items():
+            sets.append(
+                WordSet(f"business-{group}", f"Business: {label}", "words", frozenset(by_group[group]))
+            )
+        return tuple(sets)

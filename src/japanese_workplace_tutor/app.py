@@ -51,6 +51,9 @@ from .profile import (
     ROLE_TASK_SUGGESTIONS,
 )
 from .settings import Settings, get_settings
+from .core.language import LanguageToolkit
+from .language.sudachi_toolkit import SudachiToolkit
+from .progress_view import build_progress_view, load_milestones
 
 PageRenderer = Callable[[], None]
 
@@ -396,6 +399,7 @@ def _render_due_review(
                     question.question_id,
                     question.options.index(selected_answer),
                     confidence=confidence,
+                    active_review=active,
                 )
                 st.rerun()
 
@@ -1390,7 +1394,9 @@ def render_translate() -> None:
 
 
 def render_progress(
-    service: LessonService | None = None, user_id: int | None = None
+    service: LessonService | None = None,
+    user_id: int | None = None,
+    toolkit: LanguageToolkit | None = None,
 ) -> None:
     st.title("Progress")
     if service is None or user_id is None:
@@ -1398,37 +1404,103 @@ def render_progress(
         return
     progress = service.get_progress(user_id)
     if not progress:
-        st.info("Start the fixture lesson to create exposure and answered evidence.")
+        st.info("Start a lesson to begin tracking your progress.")
         return
 
-    fixture_items = {item.canonical_id: item for item in FIXTURE_LESSON.items}
-    rows = []
-    for record in progress:
-        item = fixture_items.get(record.item_id)
-        rows.append(
-            {
-                "Item": item.expression if item is not None else record.item_id,
-                "Category": record.category.value,
-                "Exposures": record.exposure_count,
-                "Correct": record.correct_count,
-                "Incorrect": record.incorrect_count,
-                "Mastery": f"{record.mastery_score:.2f}",
-                "Outcome": (
-                    record.last_outcome.value.title()
-                    if record.last_outcome is not None
-                    else "No answers"
+    view = build_progress_view(
+        progress, service.now(), toolkit, load_milestones()
+    )
+    columns = st.columns(len(view.status_counts))
+    for column, (status, count) in zip(columns, view.status_counts.items()):
+        column.metric(status.value.title(), count)
+    st.caption(
+        "Mastered = recalled correctly on separate days in two question types. "
+        "Slipping = answered wrong last time, or a review is well overdue."
+    )
+
+    if view.milestones:
+        st.subheader("Milestones")
+        st.caption(
+            "Each milestone is a finish line. The word and grammar part is shown here; "
+            "reading, writing and presentation checks come in the pilot."
+        )
+        for item in view.milestones:
+            milestone = item.milestone
+            st.markdown(f"**{milestone.name}** · {milestone.cefr_hint} · {milestone.summary}")
+            st.progress(
+                min(1.0, item.share),
+                text=(
+                    f"{item.mastered} of {item.total} words and grammar points mastered "
+                    f"({item.share:.0%}, target {milestone.coverage_target:.0%})"
                 ),
-                "Interval": f"{record.sm2_interval_days} days",
-                "Ease": f"{record.sm2_ease:.2f}",
-                "Successful reviews": record.consecutive_successful_reviews,
+            )
+            with st.expander(f"What {milestone.name} covers"):
+                for kind, label in (("read", "Read"), ("write", "Write"), ("speak", "Speak")):
+                    tasks = milestone.tasks.get(kind, ())
+                    if tasks:
+                        st.write(f"{label}: " + "; ".join(tasks))
+                st.write(
+                    "Word sets: "
+                    + ", ".join(f"{part.label} {part.mastered}/{part.total}" for part in item.parts)
+                )
+
+    if view.coverage:
+        st.subheader("Coverage")
+        st.dataframe(
+            [
+                {
+                    "Set": part.label,
+                    "Mastered": part.mastered,
+                    "Total": part.total,
+                    "Share": f"{part.share:.0%}",
+                }
+                for part in view.coverage
+            ],
+            hide_index=True,
+            width="stretch",
+        )
+
+    st.subheader("Your items")
+    st.dataframe(
+        [
+            {
+                "Item": row.name,
+                "Type": row.category,
+                "Status": row.status.value.title(),
+                "Mastery": f"{row.mastery:.2f}",
                 "Next review": (
-                    record.next_review_at.isoformat(sep=" ", timespec="minutes")
-                    if record.next_review_at is not None
+                    row.next_review_at.strftime("%Y-%m-%d")
+                    if row.next_review_at is not None
                     else "Not scheduled"
                 ),
             }
+            for row in view.items
+        ],
+        hide_index=True,
+        width="stretch",
+    )
+    with st.expander("Scheduler details (for reviewers)"):
+        st.dataframe(
+            [
+                {
+                    "Item": record.expression or record.item_id,
+                    "Exposures": record.exposure_count,
+                    "Correct": record.correct_count,
+                    "Incorrect": record.incorrect_count,
+                    "Outcome": (
+                        record.last_outcome.value.title()
+                        if record.last_outcome is not None
+                        else "No answers"
+                    ),
+                    "Interval": f"{record.sm2_interval_days} days",
+                    "Ease": f"{record.sm2_ease:.2f}",
+                    "Successful reviews": record.consecutive_successful_reviews,
+                }
+                for record in progress
+            ],
+            hide_index=True,
+            width="stretch",
         )
-    st.dataframe(rows, hide_index=True, width="stretch")
     completions = service.get_completions(user_id)
     if completions:
         latest = completions[0]
@@ -1436,8 +1508,6 @@ def render_progress(
             f"Latest completed topic: {latest.topic_id} · {latest.difficulty} · "
             f"{latest.completed_at.isoformat(sep=' ', timespec='minutes')}"
         )
-    else:
-        st.caption("No completed lesson yet. Submitted answers remain valid evidence.")
 
 
 def _set_suggested_tasks(role_key: str, tasks_key: str) -> None:
@@ -1678,7 +1748,8 @@ def main() -> None:
 
     user_id = int(st.session_state.authenticated_user_id)
     profile_service = ProfileService(engine)
-    lesson_service = LessonService(engine)
+    toolkit = SudachiToolkit.shared()
+    lesson_service = LessonService(engine, toolkit=toolkit)
     generation_service = None
     if settings.llm_mode == "mock":
         generation_service = _mock_generation_service(settings.mock_fixture_dir)
@@ -1723,7 +1794,7 @@ def main() -> None:
     elif selected_page == "Presentation":
         render_presentation(generation_service, profile)
     elif selected_page == "Progress":
-        render_progress(lesson_service, user_id)
+        render_progress(lesson_service, user_id, toolkit)
     elif selected_page == "Profile":
         render_profile(profile_service, user_id, profile)
     elif selected_page == "Accuracy" and review_service is not None:

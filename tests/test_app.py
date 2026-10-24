@@ -293,6 +293,8 @@ def test_fixture_lesson_can_be_answered_completed_and_viewed_in_progress(
     app.sidebar.radio[0].set_value("Progress").run(timeout=10)
     assert not app.exception
     assert app.dataframe
+    assert [header.value for header in app.subheader] == ["Milestones", "Coverage", "Your items"]
+    assert "進捗" in app.dataframe[-1].value["Item"].tolist()
 
     settings = Settings(
         database_url=f"sqlite:///{database_path.as_posix()}", _env_file=None

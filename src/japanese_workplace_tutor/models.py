@@ -73,6 +73,9 @@ class LearningItem(Base):
 
     canonical_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     category: Mapped[str] = mapped_column(String(32))
+    # Reference-list spelling (dictionary or curated grammar list), never learner
+    # text; None when the item is not in the reference data.
+    expression: Mapped[str | None] = mapped_column(String(64), nullable=True)
     jlpt_level: Mapped[str | None] = mapped_column(String(32), nullable=True)
     jlpt_provenance: Mapped[str] = mapped_column(String(32))
     jlpt_confidence: Mapped[float] = mapped_column(Float())

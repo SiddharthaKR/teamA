@@ -92,7 +92,8 @@
     "render_roleplay",
     "render_accuracy",
     "_public_content_confirmed",
-    "_render_review_panel"
+    "_render_review_panel",
+    "render_progress"
    ],
    "decisions": [
     2,
@@ -152,7 +153,7 @@
    "status": "built",
    "kind": "code",
    "phase": null,
-   "description": "Persists answers as evidence and writes progress computed by the pure policy. Practice answers are logged with is_graded = false.",
+   "description": "Persists answers as evidence and writes progress computed by the pure policy. Practice answers are logged with is_graded = false. Items keep their reference-list name; due reviews include items from generated lessons, with code-built questions.",
    "modules": [
     "lesson"
    ],
@@ -160,13 +161,36 @@
     "LessonService.submit_answer",
     "LessonService.submit_retry_answer",
     "LessonService.start_due_review",
-    "LessonService.complete_lesson"
+    "LessonService.complete_lesson",
+    "LessonService.submit_review_answer"
    ],
    "decisions": [],
    "wide": false,
    "tech": [
     "sqlalchemy"
    ]
+  },
+  {
+   "id": "progress_view",
+   "ref": "U27",
+   "label": "Progress view",
+   "row": "application",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Learner-facing progress: named items with status (new, learning, mastered, slipping), coverage of each JLPT, grammar and Business set, and word progress toward the three milestones (milestones_v1.json, target 80%).",
+   "modules": [
+    "progress_view"
+   ],
+   "tools": [
+    "build_progress_view",
+    "load_milestones"
+   ],
+   "decisions": [
+    13
+   ],
+   "wide": false,
+   "tech": []
   },
   {
    "id": "profiles",
@@ -407,6 +431,45 @@
    "tech": []
   },
   {
+   "id": "f_review_q",
+   "ref": "U25",
+   "label": "Review questions",
+   "row": "features",
+   "status": "built",
+   "kind": "code",
+   "phase": null,
+   "description": "Builds due-review questions for items from generated lessons from reference data only: meaning (distractors from nearby levels, no shared meaning words) or reading (distractors by mutation: voicing, long vowel, small tsu). Keys are DERIVED, so answers are graded. Asks the weaker skill.",
+   "modules": [
+    "features.review_questions"
+   ],
+   "tools": [
+    "build_review"
+   ],
+   "decisions": [
+    3
+   ],
+   "wide": false,
+   "tech": []
+  },
+  {
+   "id": "f_milestone_checks",
+   "ref": "U26",
+   "label": "Milestone task checks",
+   "row": "features",
+   "status": "planned",
+   "kind": "code",
+   "phase": "Phase 4",
+   "description": "Reading check (code-verified keys, passed twice on different days), writing check (code checks required words and grammar; AI feedback only), presentation check (AI rubric feedback, learner confirms, optional senior sign-off). Maintenance mode after the last milestone. Pilot metrics.",
+   "modules": [],
+   "tools": [],
+   "decisions": [
+    6,
+    13
+   ],
+   "wide": false,
+   "tech": []
+  },
+  {
    "id": "prompts",
    "ref": "U15",
    "label": "Prompts",
@@ -487,7 +550,7 @@
    "status": "built",
    "kind": "code",
    "phase": null,
-   "description": "No IO, UI, database or SDK imports (import-linter). Items and questions, learner and inputs, progress policy t05-v1 with replay, key verification, difficulty (JLPT level plus Business Japanese in section), ports.",
+   "description": "No IO, UI, database or SDK imports (import-linter). Items and questions, learner and inputs, progress policy t05-v1 with replay, key verification, difficulty (JLPT level plus Business Japanese in section), learner-facing item status, coverage and milestone progress, ports.",
    "modules": [
     "core.items",
     "core.learner",
@@ -498,7 +561,8 @@
     "core.language",
     "core.ports",
     "core.errors",
-    "core.japanese"
+    "core.japanese",
+    "core.coverage"
    ],
    "tools": [
     "SM2MasteryPolicy",
@@ -508,7 +572,10 @@
     "KeySource",
     "DataClass",
     "LanguageToolkit",
-    "ModelTransport"
+    "ModelTransport",
+    "item_status",
+    "coverage",
+    "milestones_progress"
    ],
    "decisions": [
     3,
@@ -1189,9 +1256,70 @@
    "target": "db",
    "kind": "planned",
    "label": "personal_terms"
+  },
+  {
+   "source": "ui",
+   "target": "toolkit",
+   "kind": "depends",
+   "label": "composition root"
+  },
+  {
+   "source": "ui",
+   "target": "progress_view",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "progress_view",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "progress_view",
+   "target": "f_lessons",
+   "kind": "depends",
+   "label": "item ids"
+  },
+  {
+   "source": "records",
+   "target": "f_review_q",
+   "kind": "depends",
+   "label": "due reviews"
+  },
+  {
+   "source": "f_review_q",
+   "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "f_milestone_checks",
+   "target": "progress_view",
+   "kind": "planned",
+   "label": "Phase 4"
+  },
+  {
+   "source": "f_placement",
+   "target": "progress_view",
+   "kind": "planned",
+   "label": "start level"
   }
  ],
  "changelog": [
+  {
+   "date": "2026-10-24",
+   "commit": "",
+   "title": "End goal step 1: named items, status, coverage, milestones, due reviews for generated items (migration 0009)",
+   "blocks": [
+    "progress_view",
+    "f_review_q",
+    "records",
+    "core",
+    "ui",
+    "f_milestone_checks"
+   ]
+  },
   {
    "date": "2026-10-24",
    "commit": "plan",
@@ -1281,7 +1409,8 @@
   "9": "Trust layer before scale; team review",
   "10": "Delete dead generate(); prompts as modules + snapshots",
   "11": "tanos primary + Business Japanese list",
-  "12": "Personal word and grammar lists (Phase 3)"
+  "12": "Personal word and grammar lists (Phase 3)",
+  "13": "End goal: learner-chosen milestones"
  },
  "source_root": "src",
  "artifact_url": "https://claude.ai/artifact/2rciS2dP3EyiRcKvuYfixB",

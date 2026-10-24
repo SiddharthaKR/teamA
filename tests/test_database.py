@@ -61,5 +61,5 @@ def test_create_database_engine_upgrades_a_stale_local_schema(tmp_path: Path) ->
         }
     engine.dispose()
 
-    assert revision == ("20261024_0008",)
+    assert revision == ("20261024_0009",)
     assert "answer_confidence" in attempt_columns

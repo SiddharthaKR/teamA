@@ -40,6 +40,19 @@ class GrammarPoint:
     provenance: str
 
 
+@dataclass(frozen=True)
+class WordSet:
+    """A named reference set a learner's coverage is measured against.
+
+    Members are lemmas for word sets and grammar point ids for grammar sets.
+    """
+
+    id: str  # e.g. "jlpt-N4", "grammar-N4", "business-meetings"
+    label: str
+    kind: Literal["words", "grammar"]
+    members: frozenset[str]
+
+
 class LanguageToolkit(Protocol):
     version: str
 
@@ -56,6 +69,16 @@ class LanguageToolkit(Protocol):
         ...
 
     def grammar_point(self, expression: str) -> GrammarPoint | None: ...
+
+    def grammar_by_id(self, point_id: str) -> GrammarPoint | None: ...
+
+    def word_sets(self) -> tuple[WordSet, ...]:
+        """JLPT word sets by level, grammar sets by level, Business Japanese groups."""
+        ...
+
+    def entries_at(self, level: str) -> tuple[LexiconEntry, ...]:
+        """Lexicon entries rated at one JLPT level, one per lemma, in a stable order."""
+        ...
 
 
 BUSINESS_LABEL = "Business Japanese"

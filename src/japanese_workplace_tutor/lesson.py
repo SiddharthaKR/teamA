@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from uuid import uuid4
 
-from sqlalchemy import Engine, func, select
+from sqlalchemy import Engine, func, or_, select
 from sqlalchemy.orm import Session
 
 # Domain value types live in the pure core; they are re-exported here because the
@@ -33,6 +33,8 @@ from .core.progress import (  # noqa: F401
     SM2MasteryPolicy,
     skill_dimension,
 )
+from .core.language import LanguageToolkit
+from .features.review_questions import build_review
 from .schemas.lessons import GeneratedLessonDraft, GeneratedQuiz
 from .models import (
     CompletedLessonMetadata,
@@ -274,6 +276,7 @@ SUPPLEMENTAL_REVIEW_QUESTIONS = (
 )
 
 REVIEW_ITEMS = (*FIXTURE_LESSON.items, *SUPPLEMENTAL_REVIEW_ITEMS)
+_FIXTURE_NAMES = {item.canonical_id: item.expression for item in REVIEW_ITEMS}
 REVIEW_QUESTIONS = {
     item.canonical_id: tuple(
         question
@@ -360,10 +363,29 @@ class LessonService:
     AGAIN_REVIEW_DELAY = POLICY.AGAIN_REVIEW_DELAY
 
     def __init__(
-        self, engine: Engine, clock: Callable[[], datetime] = _utc_now
+        self,
+        engine: Engine,
+        clock: Callable[[], datetime] = _utc_now,
+        toolkit: LanguageToolkit | None = None,
     ) -> None:
         self._engine = engine
         self._clock = clock
+        # With a toolkit, items from generated lessons keep their reference-list
+        # name and become reviewable with code-built questions.
+        self._toolkit = toolkit
+
+    def now(self) -> datetime:
+        return self._clock()
+
+    def _reviewable(self):
+        """SQL condition: an item the due review can build a question for."""
+
+        if self._toolkit is None:
+            return UserItemProgress.item_id.in_(REVIEW_QUESTIONS)
+        return or_(
+            UserItemProgress.item_id.in_(REVIEW_QUESTIONS),
+            LearningItem.expression.is_not(None),
+        )
 
     def start_fixture_lesson(
         self, user_id: int, lesson_session_id: str | None = None
@@ -453,9 +475,11 @@ class LessonService:
     def get_due_count(self, user_id: int) -> int:
         with Session(self._engine) as session:
             count = session.scalar(
-                select(func.count(UserItemProgress.id)).where(
+                select(func.count(UserItemProgress.id))
+                .join(LearningItem, LearningItem.canonical_id == UserItemProgress.item_id)
+                .where(
                     UserItemProgress.user_id == user_id,
-                    UserItemProgress.item_id.in_(REVIEW_QUESTIONS),
+                    self._reviewable(),
                     UserItemProgress.next_review_at.is_not(None),
                     UserItemProgress.next_review_at <= self._clock(),
                 )
@@ -481,7 +505,7 @@ class LessonService:
                 .join(LearningItem, LearningItem.canonical_id == UserItemProgress.item_id)
                 .where(
                     UserItemProgress.user_id == user_id,
-                    UserItemProgress.item_id.in_(REVIEW_QUESTIONS),
+                    self._reviewable(),
                     UserItemProgress.next_review_at.is_not(None),
                     UserItemProgress.next_review_at <= self._clock(),
                 )
@@ -490,11 +514,10 @@ class LessonService:
                     UserItemProgress.mastery_score,
                     UserItemProgress.item_id,
                 )
-                .limit(5)
+                .limit(20)
             ).all()
-            review_items = tuple(
-                self._due_review_item(progress, item) for progress, item in rows
-            )
+            built = (self._due_review_item(progress, item) for progress, item in rows)
+            review_items = tuple(item for item in built if item is not None)[:5]
         return ActiveReview(session_id, review_items)
 
     def submit_review_answer(
@@ -505,6 +528,7 @@ class LessonService:
         selected_option_index: int,
         *,
         confidence: AnswerConfidence = AnswerConfidence.SURE,
+        active_review: ActiveReview | None = None,
     ) -> AttemptResult:
         question = self._find_question(
             (
@@ -514,6 +538,15 @@ class LessonService:
             ),
             question_id,
         )
+        review_item = None
+        if question is None and active_review is not None:
+            if active_review.review_session_id != review_session_id:
+                raise LessonStateError("This question is not part of the active review.")
+            review_item = next(
+                (entry for entry in active_review.items if entry.question.question_id == question_id),
+                None,
+            )
+            question = review_item.question if review_item is not None else None
         if question is None:
             raise LessonStateError("This question is not part of the active review.")
         return self._submit_question(
@@ -523,6 +556,7 @@ class LessonService:
             selected_option_index,
             is_retry=False,
             require_due=True,
+            lesson_item=review_item.item if review_item is not None else None,
             confidence=confidence,
         )
 
@@ -635,7 +669,7 @@ class LessonService:
 
             if require_due:
                 selected_question = self._select_review_question(progress, fixture_item)
-                if question.question_id != selected_question.question_id:
+                if selected_question is None or question.question_id != selected_question.question_id:
                     raise LessonStateError("This question is not part of the active review.")
 
             is_correct = selected_option_index == question.correct_option_index
@@ -829,6 +863,7 @@ class LessonService:
                     ),
                     last_answered_at=progress.last_answered_at,
                     next_review_at=progress.next_review_at,
+                    expression=item.expression or _FIXTURE_NAMES.get(progress.item_id),
                 )
                 for progress, item in rows
             )
@@ -844,23 +879,55 @@ class LessonService:
 
     def _due_review_item(
         self, progress: UserItemProgress, learning_item: LearningItem
-    ) -> DueReviewItem:
+    ) -> DueReviewItem | None:
         if progress.next_review_at is None:
             raise LessonStateError("A due review item must have a review date.")
         fixture_item = next(
-            item for item in REVIEW_ITEMS if item.canonical_id == learning_item.canonical_id
+            (item for item in REVIEW_ITEMS if item.canonical_id == learning_item.canonical_id),
+            None,
         )
+        if fixture_item is None:
+            built = self._build_review(progress, learning_item)
+            if built is None:
+                return None
+            fixture_item, question = built
+        else:
+            question = self._select_review_question(progress, fixture_item)
         return DueReviewItem(
             item=fixture_item,
-            question=self._select_review_question(progress, fixture_item),
+            question=question,
             mastery_score=progress.mastery_score,
             dimension_scores=dict(progress.dimension_scores or {}),
             next_review_at=progress.next_review_at,
         )
 
+    def _build_review(
+        self, progress: UserItemProgress, learning_item: LearningItem
+    ) -> tuple[FixtureItem, FixtureQuestion] | None:
+        if self._toolkit is None or not learning_item.expression:
+            return None
+        return build_review(
+            learning_item.canonical_id,
+            ItemCategory(learning_item.category),
+            learning_item.expression,
+            dict(progress.dimension_scores or {}),
+            self._toolkit,
+        )
+
     def _select_review_question(
         self, progress: UserItemProgress, fixture_item: FixtureItem
-    ) -> FixtureQuestion:
+    ) -> FixtureQuestion | None:
+        if fixture_item.canonical_id not in REVIEW_QUESTIONS:
+            if self._toolkit is None:
+                return None
+            built = build_review(
+                fixture_item.canonical_id,
+                fixture_item.category,
+                fixture_item.expression,
+                dict(progress.dimension_scores or {}),
+                self._toolkit,
+            )
+            return built[1] if built is not None else None
         return min(
             REVIEW_QUESTIONS[fixture_item.canonical_id],
             key=lambda question: (
@@ -872,18 +939,36 @@ class LessonService:
             ),
         )
 
-    @staticmethod
-    def _ensure_item(session: Session, fixture_item: FixtureItem) -> None:
-        if session.get(LearningItem, fixture_item.canonical_id) is None:
+    def _reference_name(self, fixture_item: FixtureItem) -> str | None:
+        """The reference-list spelling, so only dictionary text is ever stored."""
+
+        if fixture_item.canonical_id in REVIEW_QUESTIONS:
+            return fixture_item.expression
+        if self._toolkit is None:
+            return None
+        if fixture_item.category is ItemCategory.GRAMMAR:
+            point = self._toolkit.grammar_point(fixture_item.expression)
+            if point is None or fixture_item.canonical_id != f"grammar:{point.id}":
+                return None
+            return point.display[:64]
+        entry = self._toolkit.lookup(fixture_item.expression)
+        return entry.lemma[:64] if entry is not None else None
+
+    def _ensure_item(self, session: Session, fixture_item: FixtureItem) -> None:
+        existing = session.get(LearningItem, fixture_item.canonical_id)
+        if existing is None:
             session.add(
                 LearningItem(
                     canonical_id=fixture_item.canonical_id,
                     category=fixture_item.category.value,
+                    expression=self._reference_name(fixture_item),
                     jlpt_level=fixture_item.jlpt_level,
                     jlpt_provenance=fixture_item.jlpt_provenance,
                     jlpt_confidence=fixture_item.jlpt_confidence,
                 )
             )
+        elif existing.expression is None:
+            existing.expression = self._reference_name(fixture_item)
 
     @staticmethod
     def _get_progress(
