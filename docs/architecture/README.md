@@ -10,7 +10,7 @@
 Whenever a module, dependency, tool or plan changes:
 
 1. Edit `graph.json`: blocks (with `modules`, `tools`, `status`, `phase`, `decisions`), edges, and a `changelog` entry.
-2. Run `python scripts/build_architecture_page.py`.
+2. Run `python scripts/archmap.py check`, then `python scripts/archmap.py build`.
 3. Run the tests. `tests/test_architecture_graph.py` fails when:
    - a module is missing from the map or listed twice;
    - a real import between blocks is not drawn, or a drawn `depends` wire no longer exists in the code;

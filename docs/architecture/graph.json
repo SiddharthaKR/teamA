@@ -1,6 +1,6 @@
 {
  "name": "Japanese Workplace Tutor",
- "version": "2026-10-24 · v2 · after Phase 2",
+ "version": "2026-10-24 · v2 · after Phase 2 · archmap-1",
  "package": "japanese_workplace_tutor",
  "rows": [
   {
@@ -53,7 +53,8 @@
    "modules": [],
    "tools": [],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "reviewer",
@@ -69,7 +70,8 @@
    "decisions": [
     9
    ],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "ui",
@@ -97,7 +99,12 @@
     4,
     6
    ],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "streamlit",
+    "sqlalchemy",
+    "python-pptx"
+   ]
   },
   {
    "id": "api",
@@ -113,7 +120,10 @@
    "decisions": [
     4
    ],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "fastapi"
+   ]
   },
   {
    "id": "facade",
@@ -131,7 +141,8 @@
     "LessonGenerationService"
    ],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "records",
@@ -152,7 +163,10 @@
     "LessonService.complete_lesson"
    ],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "sqlalchemy"
+   ]
   },
   {
    "id": "profiles",
@@ -172,7 +186,12 @@
     "AuthenticationService"
    ],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "sqlalchemy",
+    "argon2",
+    "pydantic"
+   ]
   },
   {
    "id": "review",
@@ -194,7 +213,10 @@
    "decisions": [
     9
    ],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "sqlalchemy"
+   ]
   },
   {
    "id": "settings",
@@ -213,7 +235,11 @@
     "get_settings"
    ],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "pydantic",
+    "pydantic-settings"
+   ]
   },
   {
    "id": "worker",
@@ -227,7 +253,10 @@
    "modules": [],
    "tools": [],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "postgres"
+   ]
   },
   {
    "id": "f_lessons",
@@ -252,7 +281,10 @@
     1,
     3
    ],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "pydantic"
+   ]
   },
   {
    "id": "f_roleplay",
@@ -273,7 +305,8 @@
    "decisions": [
     6
    ],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "f_presentation",
@@ -297,7 +330,8 @@
     2,
     6
    ],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "f_translation",
@@ -313,7 +347,8 @@
    "decisions": [
     1
    ],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "f_placement",
@@ -327,7 +362,8 @@
    "modules": [],
    "tools": [],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "f_documents",
@@ -343,7 +379,8 @@
    "decisions": [
     2
    ],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "prompts",
@@ -365,7 +402,8 @@
     "presentation-v1"
    ],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "schemas",
@@ -388,7 +426,10 @@
     "SlideLocalization"
    ],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "pydantic"
+   ]
   },
   {
    "id": "gateway",
@@ -409,7 +450,10 @@
    "decisions": [
     2
    ],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "pydantic"
+   ]
   },
   {
    "id": "core",
@@ -446,7 +490,10 @@
     3,
     5
    ],
-   "wide": true
+   "wide": true,
+   "tech": [
+    "pydantic"
+   ]
   },
   {
    "id": "openai",
@@ -465,7 +512,11 @@
     "extract_json_text"
    ],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "requests",
+    "openai-api"
+   ]
   },
   {
    "id": "mock",
@@ -484,7 +535,8 @@
     "RecordingTransport"
    ],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "toolkit",
@@ -496,18 +548,24 @@
    "phase": null,
    "description": "Tokenizer, readings, dictionary forms, JLPT levels and grammar points from reference data, never from the model.",
    "modules": [
-    "language.sudachi_toolkit",
-    "resources"
+    "language.sudachi_toolkit"
    ],
    "tools": [
     "SudachiToolkit.tokenize",
     "lemma",
     "lookup",
     "readings",
-    "grammar_point"
+    "grammar_point",
+    "resources/*.json"
    ],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "sudachipy",
+    "sudachidict",
+    "openjlpt",
+    "curated"
+   ]
   },
   {
    "id": "db",
@@ -529,7 +587,12 @@
     "create_database_engine"
    ],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "sqlalchemy",
+    "alembic",
+    "sqlite"
+   ]
   },
   {
    "id": "tsuzumi",
@@ -545,7 +608,10 @@
    "decisions": [
     2
    ],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "tsuzumi"
+   ]
   },
   {
    "id": "openai_api",
@@ -559,7 +625,10 @@
    "modules": [],
    "tools": [],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "openai-api"
+   ]
   },
   {
    "id": "refdata",
@@ -573,7 +642,12 @@
    "modules": [],
    "tools": [],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "sudachidict",
+    "openjlpt",
+    "curated"
+   ]
   },
   {
    "id": "sqlite",
@@ -587,7 +661,10 @@
    "modules": [],
    "tools": [],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "sqlite"
+   ]
   },
   {
    "id": "postgres",
@@ -601,7 +678,11 @@
    "modules": [],
    "tools": [],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "postgres",
+    "docker"
+   ]
   },
   {
    "id": "tests",
@@ -615,7 +696,12 @@
    "modules": [],
    "tools": [],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "pytest",
+    "import-linter",
+    "uv"
+   ]
   },
   {
    "id": "golden",
@@ -629,7 +715,8 @@
    "modules": [],
    "tools": [],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "sheets",
@@ -645,7 +732,8 @@
    "decisions": [
     9
    ],
-   "wide": false
+   "wide": false,
+   "tech": []
   },
   {
    "id": "evals",
@@ -659,7 +747,10 @@
    "modules": [],
    "tools": [],
    "decisions": [],
-   "wide": false
+   "wide": false,
+   "tech": [
+    "pytest"
+   ]
   }
  ],
  "edges": [
@@ -1045,6 +1136,14 @@
  "changelog": [
   {
    "date": "2026-10-24",
+   "commit": "",
+   "title": "System map: external tech catalog and the archmap generator (scripts/archmap.py)",
+   "blocks": [
+    "tests"
+   ]
+  },
+  {
+   "date": "2026-10-24",
    "commit": "3924de8",
    "title": "Phase 2d-e: public-content checkbox, feedback-only practice, accuracy review tools",
    "blocks": [
@@ -1103,5 +1202,240 @@
   "7": "Pilot 20-30 users",
   "8": "Refactor on v2 branch",
   "9": "Trust layer before scale; team review"
- }
+ },
+ "source_root": "src",
+ "artifact_url": "https://claude.ai/artifact/2rciS2dP3EyiRcKvuYfixB",
+ "rule": "The model proposes; the core decides. Nothing in the core imports a database, network, UI or model SDK.",
+ "tech": [
+  {
+   "id": "openai-api",
+   "name": "OpenAI API",
+   "category": "External API",
+   "version": "chat completions",
+   "license": "commercial",
+   "packages": [],
+   "notes": "Receives PUBLIC content only; keys not added yet.",
+   "status": "built"
+  },
+  {
+   "id": "tsuzumi",
+   "name": "tsuzumi 2 (on-prem)",
+   "category": "Model",
+   "version": "",
+   "license": "NTT",
+   "packages": [],
+   "notes": "Planned on-prem model for PRIVATE tasks.",
+   "status": "on_hold"
+  },
+  {
+   "id": "streamlit",
+   "name": "Streamlit",
+   "category": "Framework",
+   "version": "1.62.0",
+   "license": "Apache-2.0",
+   "packages": [
+    "streamlit"
+   ],
+   "notes": "UI framework.",
+   "status": "built"
+  },
+  {
+   "id": "fastapi",
+   "name": "FastAPI",
+   "category": "Framework",
+   "version": "",
+   "license": "MIT",
+   "packages": [],
+   "notes": "Planned API layer.",
+   "status": "planned"
+  },
+  {
+   "id": "pydantic",
+   "name": "Pydantic",
+   "category": "Library",
+   "version": "2.13.4",
+   "license": "MIT",
+   "packages": [
+    "pydantic"
+   ],
+   "notes": "Validates every model response and domain type.",
+   "status": "built"
+  },
+  {
+   "id": "pydantic-settings",
+   "name": "pydantic-settings",
+   "category": "Library",
+   "version": "2.15.0",
+   "license": "MIT",
+   "packages": [
+    "pydantic_settings"
+   ],
+   "notes": "JLT_* environment configuration.",
+   "status": "built"
+  },
+  {
+   "id": "sqlalchemy",
+   "name": "SQLAlchemy",
+   "category": "Library",
+   "version": "2.0.52",
+   "license": "MIT",
+   "packages": [
+    "sqlalchemy"
+   ],
+   "notes": "ORM and engine.",
+   "status": "built"
+  },
+  {
+   "id": "alembic",
+   "name": "Alembic",
+   "category": "Library",
+   "version": "1.19.1",
+   "license": "MIT",
+   "packages": [
+    "alembic"
+   ],
+   "notes": "Schema migrations (head 0008).",
+   "status": "built"
+  },
+  {
+   "id": "argon2",
+   "name": "argon2-cffi",
+   "category": "Library",
+   "version": "25.1.0",
+   "license": "MIT",
+   "packages": [
+    "argon2"
+   ],
+   "notes": "Argon2id password hashes.",
+   "status": "built"
+  },
+  {
+   "id": "requests",
+   "name": "requests",
+   "category": "Library",
+   "version": "2.34.2",
+   "license": "Apache-2.0",
+   "packages": [
+    "requests"
+   ],
+   "notes": "HTTP client for the model endpoint.",
+   "status": "built"
+  },
+  {
+   "id": "python-pptx",
+   "name": "python-pptx",
+   "category": "Library",
+   "version": "1.0.2",
+   "license": "MIT",
+   "packages": [
+    "pptx"
+   ],
+   "notes": "Reads uploaded decks.",
+   "status": "built"
+  },
+  {
+   "id": "sudachipy",
+   "name": "SudachiPy",
+   "category": "Library",
+   "version": "0.7.0",
+   "license": "Apache-2.0",
+   "packages": [
+    "sudachipy"
+   ],
+   "notes": "Japanese tokenizer.",
+   "status": "built"
+  },
+  {
+   "id": "sudachidict",
+   "name": "SudachiDict-core",
+   "category": "Reference data",
+   "version": "20261015",
+   "license": "Apache-2.0",
+   "packages": [],
+   "notes": "Dictionary forms and readings.",
+   "status": "built"
+  },
+  {
+   "id": "openjlpt",
+   "name": "OpenJLPT",
+   "category": "Reference data",
+   "version": "0.1.0 (alpha)",
+   "license": "CC BY-SA 4.0",
+   "packages": [
+    "openjlpt"
+   ],
+   "notes": "JLPT word and kanji levels; known data errors.",
+   "status": "built"
+  },
+  {
+   "id": "curated",
+   "name": "Curated lists",
+   "category": "Reference data",
+   "version": "grammar-list-v1, override-v1",
+   "license": "internal",
+   "packages": [],
+   "notes": "56 grammar points and 9 level fixes; team review pending.",
+   "status": "built"
+  },
+  {
+   "id": "sqlite",
+   "name": "SQLite",
+   "category": "Database",
+   "version": "",
+   "license": "public domain",
+   "packages": [],
+   "notes": "Local file database now.",
+   "status": "built"
+  },
+  {
+   "id": "postgres",
+   "name": "PostgreSQL",
+   "category": "Database",
+   "version": "",
+   "license": "PostgreSQL",
+   "packages": [],
+   "notes": "Pilot database and job queue.",
+   "status": "planned"
+  },
+  {
+   "id": "docker",
+   "name": "Docker Compose",
+   "category": "Infrastructure",
+   "version": "",
+   "license": "",
+   "packages": [],
+   "notes": "Planned on-prem deployment: proxy, web, api, worker, db.",
+   "status": "planned"
+  },
+  {
+   "id": "pytest",
+   "name": "pytest",
+   "category": "Dev tool",
+   "version": "9.1.1",
+   "license": "MIT",
+   "packages": [],
+   "notes": "300 tests on MockLLM.",
+   "status": "built"
+  },
+  {
+   "id": "import-linter",
+   "name": "import-linter",
+   "category": "Dev tool",
+   "version": "2.15",
+   "license": "BSD-2",
+   "packages": [],
+   "notes": "Layer contracts.",
+   "status": "built"
+  },
+  {
+   "id": "uv",
+   "name": "uv",
+   "category": "Dev tool",
+   "version": "",
+   "license": "MIT",
+   "packages": [],
+   "notes": "Python 3.14 environment setup.",
+   "status": "built"
+  }
+ ]
 }
