@@ -383,6 +383,30 @@
    "tech": []
   },
   {
+   "id": "f_personal",
+   "ref": "U24",
+   "label": "Personal lists",
+   "row": "features",
+   "status": "planned",
+   "kind": "code",
+   "phase": "Phase 3",
+   "description": "Each learner adds words and grammar (one at a time or many pasted lines), grades any entry S, A or B by importance, hides shared words and suggests words to the reviewer queue. Personal entries count as in section for difficulty and S/A/B weights lesson-target choice (3x/2x/1x); mastery, keys and intervals are unchanged. Readings come from the toolkit. Public-only note on the add boxes.",
+   "modules": [],
+   "tools": [
+    "personal_terms table",
+    "add / paste preview",
+    "S/A/B grade",
+    "hide",
+    "suggest to reviewer queue"
+   ],
+   "decisions": [
+    2,
+    12
+   ],
+   "wide": false,
+   "tech": []
+  },
+  {
    "id": "prompts",
    "ref": "U15",
    "label": "Prompts",
@@ -558,7 +582,9 @@
     "grammar_point",
     "resources/*.json"
    ],
-   "decisions": [],
+   "decisions": [
+    11
+   ],
    "wide": false,
    "tech": [
     "sudachipy",
@@ -1133,9 +1159,47 @@
    "target": "golden",
    "kind": "planned",
    "label": ""
+  },
+  {
+   "source": "ui",
+   "target": "f_personal",
+   "kind": "planned",
+   "label": "add, paste, grade"
+  },
+  {
+   "source": "f_personal",
+   "target": "toolkit",
+   "kind": "planned",
+   "label": "lemma + reading"
+  },
+  {
+   "source": "f_personal",
+   "target": "f_lessons",
+   "kind": "planned",
+   "label": "targets + in-section words"
+  },
+  {
+   "source": "f_personal",
+   "target": "review",
+   "kind": "planned",
+   "label": "suggestions"
+  },
+  {
+   "source": "f_personal",
+   "target": "db",
+   "kind": "planned",
+   "label": "personal_terms"
   }
  ],
  "changelog": [
+  {
+   "date": "2026-10-24",
+   "commit": "plan",
+   "title": "Plan: personal word and grammar lists with S/A/B grades (Phase 3, decision 12)",
+   "blocks": [
+    "f_personal"
+   ]
+  },
   {
    "date": "2026-10-24",
    "commit": "b59c222",
@@ -1214,7 +1278,10 @@
   "6": "Roleplay feedback only",
   "7": "Pilot 20-30 users",
   "8": "Refactor on v2 branch",
-  "9": "Trust layer before scale; team review"
+  "9": "Trust layer before scale; team review",
+  "10": "Delete dead generate(); prompts as modules + snapshots",
+  "11": "tanos primary + Business Japanese list",
+  "12": "Personal word and grammar lists (Phase 3)"
  },
  "source_root": "src",
  "artifact_url": "https://claude.ai/artifact/2rciS2dP3EyiRcKvuYfixB",
