@@ -38,7 +38,25 @@ Dependencies point inward toward a pure core; `lint-imports` (run by the test su
 
 Every model task carries a `DataClass`. v1 tags all tasks `PUBLIC` (generic or user-attested content). The gateway refuses `PRIVATE` tasks unless the transport declares `accepts_private_data`, which only a future on-premises adapter will do.
 
-## Requirements
+## Trust layer (v2, Phase 2)
+
+Japanese facts come from a local toolkit, not from the model:
+
+- **Tokenizer:** SudachiPy with the core dictionary (dictionary forms and readings).
+- **Levels:** OpenJLPT 0.1.0 (CC BY-SA 4.0) plus `resources/jlpt_overrides_v1.json`, which fixes known errors in that alpha dataset. A word not in the data shows as *unrated*; it never takes the model's guess.
+- **Grammar:** `resources/grammar_points_v1.json`, 56 curated points whose levels still need team review.
+- **Item IDs:** words map to their dictionary form, so 連絡します and 連絡 are one item. Grammar maps to the curated ID.
+- **Answer keys:** a generated question is graded only when code confirms its key. A reading must be in the accepted readings, a meaning must match the reference glosses, and a cloze must reproduce a sentence from the passage with the blank hiding the target item. No distractor may also be right. Other questions stay as practice: their answers are logged with `is_graded = false` and never change mastery or schedules. A quiz needs at least 2 graded questions.
+- **Difficulty:** every draft carries an 80/20 report (familiar, stretch and unrated words for the learner's level). A passage with more than 50% stretch words is regenerated.
+- **Public content only:** typed scenarios and decks need a "public and non-confidential" checkbox, shown beside a do-not-upload-work-data note.
+- **Roleplay and delivery practice (beta):** AI feedback only. Nothing is stored as pass/fail; the learner decides when they are ready.
+
+### Team accuracy review (decision 9)
+
+1. **Review sheet:** `python scripts/export_review_sheet.py --live --limit 20` writes `data/review-sheets/review_sheet.csv` from the golden set. Reviewers fill "Correct? (Y/N)". Then `python scripts/score_review_sheet.py data/review-sheets/review_sheet.csv --target 0.02` prints error rates by kind and by answer-key source.
+2. **In-app reviewer mode:** set `JLT_REVIEWER_MODE=true`. Every lesson gets a panel to mark lines, items and questions right or wrong, and an **Accuracy** page reports the error rate.
+3. **Normal use:** the team uses the app for a couple of weeks and reports problems informally.
+
 
 - Windows with Python 3.14.3 (pinned in `.python-version`)
 - A writable local checkout

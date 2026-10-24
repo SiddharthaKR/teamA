@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     llm_mode: Literal["live", "mock", "record"] = "live"
     mock_fixture_dir: str = "fixtures/llm"
     llm_recording_path: str = "data/llm-recordings/recordings.jsonl"
+    # Team accuracy review (decision 9): shows "right / wrong" controls on generated
+    # content and an Accuracy page. For reviewers only; snapshots keep reviewed text.
+    reviewer_mode: bool = False
 
     @property
     def model_configured(self) -> bool:

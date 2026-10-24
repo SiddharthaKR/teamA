@@ -25,6 +25,8 @@ from .generation import (
 )
 from .core.ports import ModelTransport
 from .llm.mock import MockTransport, RecordingTransport
+from .prompts import lessons as lesson_prompts, presentation as presentation_prompts, roleplay as roleplay_prompts
+from .review import REASONS, ReviewService, review_targets
 from .llm.openai_transport import OpenAICompatibleTransport
 from .lesson import (
     FixtureQuestion,
@@ -146,6 +148,114 @@ def _glossary(
                     entries[key] = (label, point, [])
                 entries[key][2].append(number)
     return list(entries.values())
+
+
+PUBLIC_CONTENT_NOTE = (
+    "Do not enter or upload work data: no customer names, project details, internal "
+    "numbers or anything confidential. Text you submit is sent to an external AI service."
+)
+
+
+def _public_content_confirmed(key: str) -> bool:
+    """Decision 2: user-supplied text needs an explicit public-content confirmation."""
+
+    st.warning(PUBLIC_CONTENT_NOTE)
+    return st.checkbox(
+        "I confirm this content is public and non-confidential", key=key, value=False
+    )
+
+
+def _review_versions(
+    generation_service: "LessonGenerationService | None", active: ActiveLesson
+) -> dict[str, object]:
+    return {
+        "prompts": {
+            "lessons": lesson_prompts.PROMPT_VERSION,
+            "roleplay": roleplay_prompts.PROMPT_VERSION,
+            "presentation": presentation_prompts.PROMPT_VERSION,
+        },
+        "toolkit": generation_service.toolkit.version if generation_service else None,
+        "lesson_provider": active.provider_name,
+        "quiz_provider": active.quiz_provider_name,
+        "policy": LessonService.POLICY_VERSION,
+    }
+
+
+def _render_review_panel(
+    review_service: ReviewService,
+    user_id: int,
+    active: ActiveLesson,
+    versions: dict[str, object],
+) -> None:
+    """Reviewer mode: mark each line, item and question right or wrong (decision 9)."""
+
+    with st.expander("Reviewer: check this lesson's accuracy", expanded=False):
+        st.caption(
+            "Mark only what you checked. Verdicts and the reviewed text are saved for the "
+            "accuracy report."
+        )
+        choices: list[tuple[object, str, str | None, str]] = []
+        for target in review_targets(active):
+            key = f"review_{active.lesson_session_id}_{target.kind}_{target.target_id}"
+            st.markdown(f"**{target.kind.title()}** · {target.label}")
+            verdict = st.radio(
+                "Verdict",
+                ("Not reviewed", "Right", "Wrong"),
+                horizontal=True,
+                key=key,
+                label_visibility="collapsed",
+            )
+            reason = note = None
+            if verdict == "Wrong":
+                reason = st.selectbox(
+                    "What is wrong?", tuple(REASONS), format_func=REASONS.__getitem__,
+                    key=f"{key}_reason",
+                )
+                note = st.text_input("Note (optional)", key=f"{key}_note")
+            if verdict != "Not reviewed":
+                choices.append((target, "ok" if verdict == "Right" else "wrong", reason, note or ""))
+        if st.button("Save review", key=f"save_review_{active.lesson_session_id}"):
+            for target, verdict, reason, note in choices:
+                review_service.record(
+                    user_id, active.lesson_session_id, target, verdict,
+                    reason=reason, note=note, versions=versions,
+                )
+            st.success(f"Saved {len(choices)} verdicts.")
+
+
+def render_accuracy(review_service: ReviewService) -> None:
+    st.title("Accuracy")
+    report = review_service.report()
+    if not report.reviewed:
+        st.info("No reviews yet. Open a generated lesson and use the reviewer panel.")
+        return
+    left, middle, right = st.columns(3)
+    left.metric("Reviewed", report.reviewed)
+    middle.metric("Marked wrong", report.wrong)
+    right.metric("Error rate", f"{report.error_rate:.1%}")
+    st.subheader("By kind")
+    st.table(
+        [{"kind": kind, "wrong": wrong, "reviewed": total, "error rate": f"{wrong / total:.1%}"}
+         for kind, (wrong, total) in sorted(report.by_kind.items())]
+    )
+    if report.by_key_source:
+        st.subheader("Questions by answer-key source")
+        st.caption("Derived keys are graded; unverified keys are practice only.")
+        st.table(
+            [{"key source": source, "wrong": wrong, "reviewed": total,
+              "error rate": f"{wrong / total:.1%}"}
+             for source, (wrong, total) in sorted(report.by_key_source.items())]
+        )
+    if report.by_reason:
+        st.subheader("Why it was wrong")
+        st.table([{"reason": REASONS.get(reason, reason), "count": count}
+                  for reason, count in sorted(report.by_reason.items(), key=lambda kv: -kv[1])])
+    st.subheader("Everything marked wrong")
+    for row in report.wrong_rows:
+        st.markdown(f"**{row['kind']}** `{row['target']}` · {REASONS.get(row['reason'] or 'other')}")
+        if row["note"]:
+            st.caption(row["note"])
+        st.json({"snapshot": row["snapshot"], "versions": row["versions"]}, expanded=False)
 
 
 def _question_caption(question: FixtureQuestion) -> str:
@@ -416,7 +526,7 @@ def render_roleplay(
 
     challenge = st.session_state.get("roleplay_challenge")
     stage = st.session_state.get("roleplay_stage")
-    st.title("Conversation practice")
+    st.title("Conversation practice (beta)")
     if st.button("Leave conversation practice", key="leave_roleplay"):
         _clear_roleplay()
         st.rerun()
@@ -430,7 +540,7 @@ def render_roleplay(
         f"You: {challenge.learner_role}  ·  Them: {challenge.counterpart_role}  ·  "
         f"{challenge.setting}"
     )
-    st.markdown("**You graduate when you can:**")
+    st.markdown("**Aim to:**")
     for criterion in challenge.success_criteria:
         st.markdown(f"- {criterion}")
     with st.expander("Toolkit: phrases you can use"):
@@ -508,24 +618,23 @@ def render_roleplay(
         f"{verdict.recovered_from_curveball.value}: {verdict.recovery_evidence}",
     )
     provider = st.session_state.get("roleplay_provider")
-    if provider:
-        st.caption(f"Evaluated with {provider}")
-
-    if result.graduated:
-        st.success("🎓 You graduated this situation.")
+    st.caption(
+        "AI feedback (beta): it can be wrong, and it is not saved to your progress."
+        + (f" Evaluated with {provider}." if provider else "")
+    )
+    if result.failed_criteria:
+        st.info("The AI suggests focusing on: " + ", ".join(result.failed_criteria) + ".")
+    # Decision 6: no stored pass/fail. The learner decides when they are ready.
+    if st.checkbox("I feel ready to do this for real", key="roleplay_self_check"):
         st.markdown(
             f"**Now try it for real.** This week, actually {challenge.goal[0].lower()}"
-            f"{challenge.goal[1:]}. Then come back and tell me how it went."
+            f"{challenge.goal[1:]}. Then come back and practise another situation."
         )
-    else:
-        st.warning(
-            "Almost. Focus next on: " + ", ".join(result.failed_criteria) + "."
-        )
-        if st.button("Try again", key="retry_roleplay"):
-            for key in ("roleplay_verdict", "roleplay_provider"):
-                st.session_state.pop(key, None)
-            st.session_state.roleplay_stage = "respond"
-            st.rerun()
+    if st.button("Try again", key="retry_roleplay"):
+        for key in ("roleplay_verdict", "roleplay_provider", "roleplay_self_check"):
+            st.session_state.pop(key, None)
+        st.session_state.roleplay_stage = "respond"
+        st.rerun()
 
 
 def render_learn(
@@ -533,6 +642,7 @@ def render_learn(
     user_id: int | None = None,
     profile: ProfileRecord | None = None,
     generation_service: LessonGenerationService | None = None,
+    review_service: ReviewService | None = None,
 ) -> None:
     st.title("Learn")
     if service is None or user_id is None:
@@ -570,6 +680,8 @@ def render_learn(
         generation_disabled = generation_service is None or profile is None
         if generation_disabled:
             st.info("Scenario generation is unavailable until model configuration is complete.")
+        if scenario.strip() and not _public_content_confirmed("scenario_public_ok"):
+            generation_disabled = True
         if st.button(
             "Generate lesson",
             type="primary",
@@ -914,6 +1026,11 @@ def render_learn(
         else:
             st.info("Conversation practice needs model configuration.")
 
+    if review_service is not None:
+        _render_review_panel(
+            review_service, user_id, active, _review_versions(generation_service, active)
+        )
+
     if st.button("Leave lesson", key="leave_fixture_lesson"):
         _clear_active_lesson()
         st.rerun()
@@ -1136,10 +1253,9 @@ def render_present_practice(
     )
     _row("Right register", verdict.register_appropriate, verdict.register_evidence)
     st.info(f"Tip: {verdict.improvement_tip}")
-    if outcome.passed:
-        st.success("Nailed this slide.")
-    else:
-        st.warning("Focus on: " + ", ".join(outcome.failed_criteria) + ".")
+    if outcome.failed_criteria:
+        st.caption("The AI suggests focusing on: " + ", ".join(outcome.failed_criteria) + ".")
+    st.caption("AI feedback (beta): it can be wrong, and it is not saved to your progress.")
 
     left, right = st.columns(2)
     if left.button("Retry this slide", key=f"practice_retry_{index}"):
@@ -1152,8 +1268,7 @@ def render_present_practice(
             st.session_state.practice_index = index + 1
             st.rerun()
     else:
-        passed = sum(1 for verdict in results.values() if evaluate_delivery(verdict).passed)
-        st.success(f"Deck complete — you passed {passed} of {total} slides.")
+        st.success(f"Deck complete — you rehearsed all {total} slides.")
         st.markdown(
             "**Next: rehearse the whole deck out loud once, then present it for real.**"
         )
@@ -1194,6 +1309,7 @@ def render_presentation(
     }
 
     st.markdown("**Your deck**")
+    deck_public_ok = _public_content_confirmed("deck_public_ok")
     uploaded = st.file_uploader("Upload a .pptx", type=["pptx"])
     pasted = st.text_area(
         "…or paste slides (separate each slide with a blank line, or a line of ---)",
@@ -1201,7 +1317,9 @@ def render_presentation(
         placeholder="Q3 Results\nRevenue grew 12%\nAPAC drove growth\n---\nNext Steps\nExpand to two new markets",
     )
 
-    if st.button("Localize to Japanese", type="primary", key="localize_deck"):
+    if st.button(
+        "Localize to Japanese", type="primary", key="localize_deck", disabled=not deck_public_ok
+    ):
         slides: list[SlideInput] = []
         note: str | None = None
         if uploaded is not None:
@@ -1241,13 +1359,14 @@ def render_presentation(
     st.divider()
     st.subheader("Practice presenting an existing Japanese deck")
     st.caption("Already have Japanese slides? Upload or paste them and rehearse your delivery.")
+    jp_public_ok = _public_content_confirmed("jp_deck_public_ok")
     jp_uploaded = st.file_uploader("Upload a Japanese .pptx", type=["pptx"], key="jp_deck_upload")
     jp_pasted = st.text_area(
         "…or paste Japanese slides (separate each slide with a blank line, or a line of ---)",
         height=150,
         key="jp_deck_paste",
     )
-    if st.button("Practice presenting", key="practice_fresh"):
+    if st.button("Practice presenting", key="practice_fresh", disabled=not jp_public_ok):
         jp_slides: list[SlideInput] = []
         if jp_uploaded is not None:
             jp_slides = _parse_pptx_slides(jp_uploaded)
@@ -1594,19 +1713,21 @@ def main() -> None:
         engine.dispose()
         return
 
-    selected_page = st.sidebar.radio(
-        "Navigation", PAGE_RENDERERS.keys(), key="navigation"
-    )
+    review_service = ReviewService(engine) if settings.reviewer_mode else None
+    pages = [*PAGE_RENDERERS.keys(), *(["Accuracy"] if review_service else [])]
+    selected_page = st.sidebar.radio("Navigation", pages, key="navigation")
     if selected_page == "Home":
         render_home(profile, lesson_service, user_id)
     elif selected_page == "Learn":
-        render_learn(lesson_service, user_id, profile, generation_service)
+        render_learn(lesson_service, user_id, profile, generation_service, review_service)
     elif selected_page == "Presentation":
         render_presentation(generation_service, profile)
     elif selected_page == "Progress":
         render_progress(lesson_service, user_id)
     elif selected_page == "Profile":
         render_profile(profile_service, user_id, profile)
+    elif selected_page == "Accuracy" and review_service is not None:
+        render_accuracy(review_service)
     else:
         PAGE_RENDERERS[selected_page]()
     engine.dispose()
