@@ -54,7 +54,9 @@
    "tools": [],
    "decisions": [],
    "wide": false,
-   "tech": []
+   "tech": [
+    "m365copilot"
+   ]
   },
   {
    "id": "reviewer",
@@ -414,21 +416,46 @@
    "status": "planned",
    "kind": "code",
    "phase": "Phase 3",
-   "description": "Each learner adds words and grammar (one at a time or many pasted lines), grades any entry S, A or B by importance, hides shared words and suggests words to the reviewer queue. Personal entries count as in section for difficulty and S/A/B weights lesson-target choice (3x/2x/1x); mastery, keys and intervals are unchanged. Readings come from the toolkit. Public-only note on the add boxes.",
+   "description": "Each learner adds words and grammar (one at a time or many pasted lines, e.g. a word list from Microsoft 365 Copilot), grades any entry S, A or B by importance, hides shared words and marks words not useful. Words that 3 or more learners in a role add or reject change that role's pack automatically (no reviewer queue). Readings come from the toolkit. Public-only note on the add boxes.",
    "modules": [],
    "tools": [
     "personal_terms table",
     "add / paste preview",
     "S/A/B grade",
     "hide",
-    "suggest to reviewer queue"
+    "not useful"
    ],
    "decisions": [
     2,
-    12
+    12,
+    14
    ],
    "wide": false,
    "tech": []
+  },
+  {
+   "id": "f_priority",
+   "ref": "U28",
+   "label": "Word priority",
+   "row": "features",
+   "status": "planned",
+   "kind": "code",
+   "phase": "Phase 3",
+   "description": "Code picks each lesson's target words from a shared word bank by need score: 0.4 domain (best over the learner's domains) + 0.3 situation + 0.2 who they talk to + 0.1 frequency, times S/A/B grade, (1 - mastery) and a level filter. Computed per lesson, never stored per user. Broad packs: general office, engineering common, hardware, software, AI/ML, network, electronics lab, quantum, sales, marketing, management, other (nearest by similarity). AI-drafted pack words are kept only if in the dictionary; confirmed by a second source or half weight; one start-up review, then learner signals.",
+   "modules": [],
+   "tools": [
+    "word bank",
+    "need score",
+    "domain packs"
+   ],
+   "decisions": [
+    14
+   ],
+   "wide": false,
+   "tech": [
+    "jmdict",
+    "embeddings"
+   ]
   },
   {
    "id": "f_review_q",
@@ -741,7 +768,8 @@
     "sudachidict",
     "tanos",
     "openjlpt",
-    "curated"
+    "curated",
+    "jmdict"
    ]
   },
   {
@@ -1247,12 +1275,6 @@
   },
   {
    "source": "f_personal",
-   "target": "review",
-   "kind": "planned",
-   "label": "suggestions"
-  },
-  {
-   "source": "f_personal",
    "target": "db",
    "kind": "planned",
    "label": "personal_terms"
@@ -1304,9 +1326,43 @@
    "target": "progress_view",
    "kind": "planned",
    "label": "start level"
+  },
+  {
+   "source": "f_priority",
+   "target": "f_lessons",
+   "kind": "planned",
+   "label": "target words"
+  },
+  {
+   "source": "f_personal",
+   "target": "f_priority",
+   "kind": "planned",
+   "label": "grades, own words"
+  },
+  {
+   "source": "f_priority",
+   "target": "toolkit",
+   "kind": "planned",
+   "label": "readings, levels"
+  },
+  {
+   "source": "learner",
+   "target": "f_personal",
+   "kind": "planned",
+   "label": "paste Copilot word list"
   }
  ],
  "changelog": [
+  {
+   "date": "2026-10-25",
+   "commit": "plan",
+   "title": "Plan: personal word priority, broad domain packs, review without reviewers, Copilot word lists (decision 14)",
+   "blocks": [
+    "f_priority",
+    "f_personal",
+    "refdata"
+   ]
+  },
   {
    "date": "2026-10-24",
    "commit": "3c3e217",
@@ -1410,7 +1466,8 @@
   "10": "Delete dead generate(); prompts as modules + snapshots",
   "11": "tanos primary + Business Japanese list",
   "12": "Personal word and grammar lists (Phase 3)",
-  "13": "End goal: learner-chosen milestones"
+  "13": "End goal: learner-chosen milestones",
+  "14": "Personal word priority: need score, broad packs"
  },
  "source_root": "src",
  "artifact_url": "https://claude.ai/artifact/2rciS2dP3EyiRcKvuYfixB",
@@ -1655,6 +1712,36 @@
    "packages": [],
    "notes": "Python 3.14 environment setup.",
    "status": "built"
+  },
+  {
+   "id": "jmdict",
+   "name": "JMdict (simplified)",
+   "category": "Reference data",
+   "version": "3.6.2",
+   "license": "CC BY-SA 4.0",
+   "packages": [],
+   "notes": "Planned: meanings and field tags (computing, engineering, electronics, business) for words outside the JLPT lists.",
+   "status": "planned"
+  },
+  {
+   "id": "embeddings",
+   "name": "Local embedding model",
+   "category": "Model",
+   "version": "to choose",
+   "license": "to check",
+   "packages": [],
+   "notes": "Planned, on the on-prem server: similarity between words, domain descriptions and free-text roles. Profiles never leave the server.",
+   "status": "planned"
+  },
+  {
+   "id": "m365copilot",
+   "name": "Microsoft 365 Copilot",
+   "category": "External API",
+   "version": "company licence",
+   "license": "commercial",
+   "packages": [],
+   "notes": "Used manually only: a learner asks Copilot for the Japanese words they use most and pastes the list. No API connection in the pilot.",
+   "status": "planned"
   }
  ]
 }
