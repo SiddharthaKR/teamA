@@ -6,6 +6,7 @@ Hand-off written 2026-10-25. Work continues on branch `v2`. Each task has a goal
 
 | File | Why |
 | --- | --- |
+| `docs/handoff/PLAN.md` | The phase plan as reviewed by the team; check its review table and answers before starting a phase |
 | `docs/design/architecture-v2.md` | The design: trust tiers, phases, decisions 1–16 |
 | `docs/ux-review/README.md` | UX walkthrough with screenshots and a 16-row fix list |
 | `docs/architecture/graph.json`, `docs/architecture/architecture.html` | System map (blocks, wires, external tech), checked against the code |
