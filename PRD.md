@@ -1,5 +1,77 @@
 # Product Requirements Document
 
+> **Version 2 (post-hackathon), updated 2026-10-25.** Sections 1–18 below are the hackathon PRD (tasks T01–T18) and stay the baseline. Section 0 records what changed when the project became an internal NTT-AT tool. Where they disagree, section 0 wins. Design details: `docs/design/architecture-v2.md` (decisions 1–16); plan for team review: `docs/handoff/PLAN.md`; task list: `docs/handoff/TASKS.md`; UX walkthrough: `docs/ux-review/README.md`.
+
+## 0. Version 2 update (post-hackathon)
+
+### Context
+- The hackathon app won 3rd prize and continues as an internal NTT-AT tool on an on-prem server.
+- Model provider: OpenAI API (keys pending; mock mode for development and tests). An on-prem model may come later.
+- Pilot: 20–30 users from 2–3 teams for about 3 months; target around January 2027, to re-check against the longer phase plan.
+- No regular Japanese reviewers: Siddhartha and the team review accuracy once or twice, not monthly.
+
+### Vision (v2)
+Each learner reaches a workplace goal they choose: they can read, write and present the Japanese their own job needs. Lessons follow their role, domains, situations and the people they talk to, and the app shows honestly how far they have come.
+
+### Product principles added in v2
+- **The model proposes; the code decides.** Anything graded, stored as fact or shown as authoritative comes from curated data or a code check. JLPT levels, readings and answer keys never come straight from the model.
+- **Trust before scale.** The team accuracy review (Phase 2 gate) comes before multi-user and the pilot.
+- **Privacy.** Only content the learner confirms is public goes to OpenAI (checkbox plus warning). Private work documents are not sent. Every prompt task is tagged PUBLIC or PRIVATE.
+- **Progress is replayed from evidence.** Answers are stored once and never changed; mastery comes from a versioned policy, so the rules can change and old answers are re-scored.
+- **Honest progress.** No streaks or points; measure recall after a gap.
+
+### Goals (v2)
+1. Trustworthy content: dictionary-based readings and levels, code-checked answer keys, a difficulty check (most words at the learner's level or Business Japanese).
+2. A clear end goal: three milestones (Get by ~A2, Take part ~B1, Contribute ~B2), each done at 80% word and grammar coverage plus reading, writing and presentation checks; then maintenance.
+3. Visible progress: item status, coverage per word list, milestone bars and progress over time.
+4. Personal learning: personal word lists, word priority by role and domain packs, a learning path with a daily plan.
+5. Stronger memory: typed answers graded by code, reviews in sentences, mixing old words into new lessons.
+
+### Non-goals (v2)
+- Audio, listening assessment, pronunciation and speech recognition (listening via text-to-speech is planned in Phase 5, ungraded).
+- Sending private or confidential work documents to OpenAI. Document upload is on hold.
+- Stored pass/fail from the AI for roleplay, writing or presentations: feedback only.
+- Direct Microsoft 365 Copilot integration during the pilot (learners may paste a Copilot word list by hand).
+- Enterprise SSO before Phase 4.
+
+### Personalisation (v2)
+- Profile: role, tasks, domains (several allowed), level, chosen milestone; usual conversation partners later.
+- Word priority: code picks each lesson's target words by a need score, priority = (0.4·domain + 0.3·situation + 0.2·who you talk to + 0.1·frequency) × importance grade × (1 − mastery) × level filter. Computed per lesson, never stored per user.
+- Domain packs: general office, engineering common, hardware/electronics, software, AI/ML, network, electronics lab, quantum, sales, marketing, management, other.
+- Personal lists: add words or grammar one at a time or by pasting lines; mark importance; hide shared words; "not useful". Words several learners in a role add or reject change that role's pack automatically.
+
+### Learning (v2)
+- Learning path: a situation map per milestone (situation × who you talk to × channel × complication), language tracks (grammar, word sets, kanji readings, keigo, reading, writing and speaking), and a daily "Today" plan: due reviews, then the step furthest behind with its reason, then free practice.
+- Quiz: the lesson is hidden while answering; typed answers (kana readings, words from meanings, particles) join multiple choice; wrong options are explained; confusion pairs get contrast drills.
+- Writing and speaking: typed practice in roleplay and presentation practice (feedback only). No audio.
+
+### Phases
+| Phase | Goal | Exit gate |
+| --- | --- | --- |
+| 0 Baseline (done) | Tag the hackathon build, mock mode, golden set | Tests pass offline |
+| 1 Split the core (done) | Core rules separate from UI and AI | No feature imports an AI SDK |
+| 2 Trust layer (built) | Nothing graded comes unchecked from the AI | Team accuracy review below an error-rate target |
+| 3 Personal learning | Lessons fit each person's job and goal | Next-step picks make sense for at least three roles |
+| 4 Multi-user runtime | Many users on the on-prem server | Load test with 30 simulated users |
+| 5 Content bank and pilot | Placement, milestone checks, pilot | Pilot review: flag rate, cost per lesson, retention |
+
+### Pilot success measures
+Recall rate at due reviews, 30-day retention, coverage growth per month, placement score before and after, can-do self-ratings.
+
+### Superseded hackathon requirements
+| Section | Hackathon rule | v2 rule |
+| --- | --- | --- |
+| 1 Primary MVP outcome | A 10-minute demo of the learning loop | The milestone end goal and pilot measures above |
+| 6 Placement | Optional placement | Required before the pilot (Phase 5) for a starting score |
+| 8 Document learning | Ephemeral document lessons | On hold: private documents may not go to OpenAI |
+| 9 Question types | Multiple choice only; no typed answers | Typed answers graded by code are planned (Phase 3). A question is graded only when code verifies its key; otherwise it is practice |
+| 9 Guessing protection | Success across forms and separate reviews | Success across forms on separate **days** (current code counts separate sessions; fix planned before the team review) |
+| 10 JLPT reference strategy | JLPT lists, else model judgment | tanos JLPT lists, OpenJLPT only for gaps, curated overrides, a Business Japanese list; a word on several levels counts at its easiest; levels never from the model |
+| 10 Persisted history | No lesson text stored | Item names are stored (reference-list spelling only, never learner text) for the progress page and due reviews |
+| 11 Translation | In MVP scope | Still in v1 scope; not built yet |
+| 12 Progress dashboard | Mastery and weaknesses | Status, coverage per list, milestones, progress over time, This week card on Home |
+| 14 Authentication | Local demo accounts | Kept until Phase 4; real login then |
+
 ## 1. Product Summary
 
 ### Working title
