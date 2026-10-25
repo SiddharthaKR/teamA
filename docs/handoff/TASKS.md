@@ -28,6 +28,8 @@ Hand-off written 2026-10-25. Work continues on branch `v2`. Each task has a goal
 
 From the UX review fix list. A1 and A2 first: they inflate exactly the numbers the team will judge.
 
+Why these matter (learning, 2026-10-25): memory fades roughly as R(t) = e^(−t/S); stability S grows most from recall after a gap and from producing an answer rather than recognising it. A1/A2 keep that honest; C8–C12 add production and context.
+
 | ID | Task | Where | Done when |
 | --- | --- | --- | --- |
 | A1 | Hide the lesson (conversation, breakdown, glossary) while the quiz is open; stop printing the answer in fill-in questions | `app.py` lesson and quiz rendering (`st.caption(f"From the lesson: …")`, around line 889) | Quiz view shows only questions; cloze context has the answer blanked; app test covers it |
@@ -57,16 +59,21 @@ Add the OpenAI keys; Siddhartha and the team use the app for about two weeks wit
 | C5 | Progress for new learners: chosen milestone in stages of about 50 items, "at your pace" date, zero coverage rows behind "Show all" | UX fix 13, risk R5 |
 | C6 | Short onboarding: ask role, level and goal at sign-up; ask domains and conversation partners later, in context | UX risk R1 |
 | C7 | Presentation page: the two forms as two tabs | UX fix 15 |
+| C8 | **Typed answers** (biggest learning gain): type the reading in kana, type the word from its English meaning, fill in a particle. New question forms next to multiple choice | Graded by code: exact match against `toolkit.readings()` and the lexicon forms (accept hiragana/katakana and listed spellings). New `QuestionForm` values and a migration for the `ck_attempt_question_form` check. Recall counts more than recognition in the policy (new policy version) |
+| C9 | **Review in sentences**: due reviews show a new example sentence with the word blanked, not the word alone | Store one example sentence per item; only text the learner confirmed public (decision 2). Answer blanked by code; the answer must not appear elsewhere on screen |
+| C10 | **Mix old into new**: each new lesson reuses 1–2 earlier words that are due | Part of word priority (C2): due items get a bonus in the need score; code checks they appear in the passage |
+| C11 | **Explain wrong options and track confusions** (e.g. てもいい vs てはいけない) | Per-option explanations for code-built questions; a confusion count per pair from `review_attempts`; frequent pairs get a contrast drill |
+| C12 | **Build the sentence**: put chunks in the right order | Part of the grammar track (C3); chunks from the tokenizer, order checked by code |
 
 Done for Phase 3 when next-step picks make sense on real profiles of at least three different roles.
 
 ## D. Phase 4: multi-user runtime
 
-FastAPI backend with Streamlit as a thin client (decision 4); PostgreSQL; a job worker for model calls; TTL storage for active sessions; per-user budgets and a usage view; replace the demo authentication (SSO later through an `IdentityProvider` port). Phone layout (UX fix 16). Done when a load test with 30 simulated users passes.
+FastAPI backend with Streamlit as a thin client (decision 4); PostgreSQL; a job worker for model calls; TTL storage for active sessions; per-user budgets and a usage view; replace the demo authentication (SSO later through an `IdentityProvider` port). Phone layout (UX fix 16). Done when a load test with 30 simulated users passes. Also: **short daily sessions** (5–10 minutes) with an optional reminder (e.g. Microsoft Teams) sent by the worker, so spacing works in practice.
 
 ## E. Phase 5: content bank and pilot
 
-Placement test (bracketing staircase over code-verified items; needed before the pilot for a starting score). Milestone task checks: reading (code-verified keys, passed twice on different days), writing (code checks required words and grammar; AI feedback only), presentation (AI rubric feedback, learner confirms, optional senior sign-off via a link without an account, UX risk R6). Maintenance mode after the last milestone. Eval suite in CI with a nightly run on the real model. Pilot metrics: recall at due reviews, 30-day retention, coverage growth per month, placement before and after, can-do self-ratings. Pilot with 20–30 users (decision 7; re-check the January 2027 date).
+Placement test (bracketing staircase over code-verified items; needed before the pilot for a starting score). Milestone task checks: reading (code-verified keys, passed twice on different days), writing (code checks required words and grammar; AI feedback only), presentation (AI rubric feedback, learner confirms, optional senior sign-off via a link without an account, UX risk R6). Maintenance mode after the last milestone. **Listening**: a play button on each conversation line using text-to-speech (prefer an on-prem or local engine; lesson text is learner-derived, decision 2); not graded. **Use it this week**: the learner picks one phrase to use at work and confirms it the next day; feeds the can-do self-ratings. Eval suite in CI with a nightly run on the real model. Pilot metrics: recall at due reviews, 30-day retention, coverage growth per month, placement before and after, can-do self-ratings. Pilot with 20–30 users (decision 7; re-check the January 2027 date).
 
 ## F. Open items
 
