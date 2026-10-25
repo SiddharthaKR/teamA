@@ -1,6 +1,6 @@
 {
  "name": "Japanese Workplace Tutor",
- "version": "2026-10-24 · v2 · after Phase 2 · archmap-1",
+ "version": "2026-10-25 · v2 · after Phase 2 · archmap-1",
  "package": "japanese_workplace_tutor",
  "rows": [
   {
@@ -118,7 +118,7 @@
    "row": "interface",
    "status": "planned",
    "kind": "code",
-   "phase": "Phase 3",
+   "phase": "Phase 4",
    "description": "Stateless HTTP API; Streamlit becomes a thin client of it.",
    "modules": [],
    "tools": [],
@@ -279,7 +279,7 @@
    "row": "application",
    "status": "planned",
    "kind": "code",
-   "phase": "Phase 3",
+   "phase": "Phase 4",
    "description": "Runs slow model calls from a PostgreSQL queue so the UI never blocks; shared concurrency cap and stale-job sweep.",
    "modules": [],
    "tools": [],
@@ -463,6 +463,29 @@
    ]
   },
   {
+   "id": "f_path",
+   "ref": "U29",
+   "label": "Learning path",
+   "row": "features",
+   "status": "planned",
+   "kind": "code",
+   "phase": "Phase 3",
+   "description": "Learn becomes a path. Situation map per milestone, varied by who you talk to, channel (face to face, email, Teams chat, phone) and complication (delay, disagreement, apology), with coverage tracked. Language tracks: grammar path, word sets, kanji readings, keigo forms (graded by code), reading (code-verified keys), writing and speaking (AI feedback only). Today plan on Home: due reviews, then the track furthest behind for the learner's milestone with the reason shown, then free practice.",
+   "modules": [],
+   "tools": [
+    "situation map",
+    "language tracks",
+    "Today plan"
+   ],
+   "decisions": [
+    6,
+    13,
+    16
+   ],
+   "wide": false,
+   "tech": []
+  },
+  {
    "id": "f_review_q",
    "ref": "U25",
    "label": "Review questions",
@@ -490,8 +513,8 @@
    "row": "features",
    "status": "planned",
    "kind": "code",
-   "phase": "Phase 4",
-   "description": "Reading check (code-verified keys, passed twice on different days), writing check (code checks required words and grammar; AI feedback only), presentation check (AI rubric feedback, learner confirms, optional senior sign-off). Maintenance mode after the last milestone. Pilot metrics.",
+   "phase": "Phase 5",
+   "description": "Placement-start score and milestone checks: reading check (code-verified keys, passed twice on different days), writing check (code checks required words and grammar; AI feedback only), presentation check (AI rubric feedback, learner confirms, optional senior sign-off). Maintenance mode after the last milestone. Pilot metrics.",
    "modules": [],
    "tools": [],
    "decisions": [
@@ -805,7 +828,7 @@
    "row": "external",
    "status": "planned",
    "kind": "external",
-   "phase": "Phase 3",
+   "phase": "Phase 4",
    "description": "Shared database and job queue for the pilot.",
    "modules": [],
    "tools": [],
@@ -874,7 +897,7 @@
    "row": "tooling",
    "status": "planned",
    "kind": "tool",
-   "phase": "Phase 4",
+   "phase": "Phase 5",
    "description": "Nightly golden-set run on the real model with rubric scores reported as kappa against human labels.",
    "modules": [],
    "tools": [],
@@ -1196,7 +1219,7 @@
    "source": "db",
    "target": "postgres",
    "kind": "planned",
-   "label": "Phase 3"
+   "label": "Phase 4"
   },
   {
    "source": "api",
@@ -1328,7 +1351,7 @@
    "source": "f_milestone_checks",
    "target": "progress_view",
    "kind": "planned",
-   "label": "Phase 4"
+   "label": "Phase 5"
   },
   {
    "source": "f_placement",
@@ -1359,9 +1382,46 @@
    "target": "f_personal",
    "kind": "planned",
    "label": "paste Copilot word list"
+  },
+  {
+   "source": "ui",
+   "target": "f_path",
+   "kind": "planned",
+   "label": "Today plan"
+  },
+  {
+   "source": "f_path",
+   "target": "f_priority",
+   "kind": "planned",
+   "label": "target words"
+  },
+  {
+   "source": "f_path",
+   "target": "progress_view",
+   "kind": "planned",
+   "label": "what is behind"
+  },
+  {
+   "source": "f_path",
+   "target": "f_lessons",
+   "kind": "planned",
+   "label": "next lesson"
   }
  ],
  "changelog": [
+  {
+   "date": "2026-10-25",
+   "commit": "plan",
+   "title": "Plan: learning path in Phase 3; multi-user runtime moves to Phase 4, content bank and pilot to Phase 5 (decision 16)",
+   "blocks": [
+    "f_path",
+    "api",
+    "worker",
+    "postgres",
+    "f_milestone_checks",
+    "evals"
+   ]
+  },
   {
    "date": "2026-10-25",
    "commit": "1364c42",
@@ -1488,7 +1548,8 @@
   "12": "Personal word and grammar lists (Phase 3)",
   "13": "End goal: learner-chosen milestones",
   "14": "Personal word priority: need score, broad packs",
-  "15": "Progress over time, replayed from answers"
+  "15": "Progress over time, replayed from answers",
+  "16": "Learning path in Phase 3; multi-user moves to Phase 4"
  },
  "source_root": "src",
  "artifact_url": "https://claude.ai/artifact/2rciS2dP3EyiRcKvuYfixB",
