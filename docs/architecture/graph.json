@@ -95,7 +95,9 @@
     "render_accuracy",
     "_public_content_confirmed",
     "_render_review_panel",
-    "render_progress"
+    "render_progress",
+    "_render_this_week",
+    "_render_over_time"
    ],
    "decisions": [
     2,
@@ -164,7 +166,8 @@
     "LessonService.submit_retry_answer",
     "LessonService.start_due_review",
     "LessonService.complete_lesson",
-    "LessonService.submit_review_answer"
+    "LessonService.submit_review_answer",
+    "LessonService.get_graded_answers"
    ],
    "decisions": [],
    "wide": false,
@@ -180,16 +183,18 @@
    "status": "built",
    "kind": "code",
    "phase": null,
-   "description": "Learner-facing progress: named items with status (new, learning, mastered, slipping), coverage of each JLPT, grammar and Business set, and word progress toward the three milestones (milestones_v1.json, target 80%).",
+   "description": "Learner-facing progress: named items with status (new, learning, mastered, slipping), coverage of each JLPT, grammar and Business set, and word progress toward the three milestones (milestones_v1.json, target 80%). Over time (decision 15): items mastered per week, recall after a 12-hour gap per week, and each milestone's change over 4 weeks, all replayed from stored answers; nothing extra is stored.",
    "modules": [
     "progress_view"
    ],
    "tools": [
     "build_progress_view",
-    "load_milestones"
+    "load_milestones",
+    "build_progress_history"
    ],
    "decisions": [
-    13
+    13,
+    15
    ],
    "wide": false,
    "tech": []
@@ -577,7 +582,7 @@
    "status": "built",
    "kind": "code",
    "phase": null,
-   "description": "No IO, UI, database or SDK imports (import-linter). Items and questions, learner and inputs, progress policy t05-v1 with replay, key verification, difficulty (JLPT level plus Business Japanese in section), learner-facing item status, coverage and milestone progress, ports.",
+   "description": "No IO, UI, database or SDK imports (import-linter). Items and questions, learner and inputs, progress policy t05-v1 with replay, key verification, difficulty (JLPT level plus Business Japanese in section), learner-facing item status, coverage and milestone progress, progress over time replayed from the answer log, ports.",
    "modules": [
     "core.items",
     "core.learner",
@@ -589,7 +594,8 @@
     "core.ports",
     "core.errors",
     "core.japanese",
-    "core.coverage"
+    "core.coverage",
+    "core.history"
    ],
    "tools": [
     "SM2MasteryPolicy",
@@ -602,7 +608,10 @@
     "ModelTransport",
     "item_status",
     "coverage",
-    "milestones_progress"
+    "milestones_progress",
+    "answer_points",
+    "weekly_history",
+    "this_week"
    ],
    "decisions": [
     3,
@@ -1355,6 +1364,17 @@
  "changelog": [
   {
    "date": "2026-10-25",
+   "commit": "",
+   "title": "Progress over time: This week card on Home, items mastered and recall charts, 4-week milestone change (decision 15)",
+   "blocks": [
+    "progress_view",
+    "core",
+    "ui",
+    "records"
+   ]
+  },
+  {
+   "date": "2026-10-25",
    "commit": "plan",
    "title": "Plan: personal word priority, broad domain packs, review without reviewers, Copilot word lists (decision 14)",
    "blocks": [
@@ -1467,7 +1487,8 @@
   "11": "tanos primary + Business Japanese list",
   "12": "Personal word and grammar lists (Phase 3)",
   "13": "End goal: learner-chosen milestones",
-  "14": "Personal word priority: need score, broad packs"
+  "14": "Personal word priority: need score, broad packs",
+  "15": "Progress over time, replayed from answers"
  },
  "source_root": "src",
  "artifact_url": "https://claude.ai/artifact/2rciS2dP3EyiRcKvuYfixB",

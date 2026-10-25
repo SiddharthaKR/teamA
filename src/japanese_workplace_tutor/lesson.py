@@ -868,6 +868,30 @@ class LessonService:
                 for progress, item in rows
             )
 
+    def get_graded_answers(self, user_id: int) -> dict[str, tuple[Answer, ...]]:
+        """Every graded answer per item, oldest first: the evidence progress replays from."""
+
+        with Session(self._engine) as session:
+            rows = session.scalars(
+                select(ReviewAttempt)
+                .where(ReviewAttempt.user_id == user_id, ReviewAttempt.is_graded.is_(True))
+                .order_by(ReviewAttempt.answered_at, ReviewAttempt.id)
+            ).all()
+            answers: dict[str, list[Answer]] = {}
+            for row in rows:
+                answers.setdefault(row.item_id, []).append(
+                    Answer(
+                        question_form=QuestionForm(row.question_form),
+                        skill_dimension=SkillDimension(row.skill_dimension),
+                        lesson_session_id=row.lesson_session_id,
+                        is_correct=row.is_correct,
+                        is_retry=row.is_retry,
+                        confidence=AnswerConfidence(row.answer_confidence),
+                        answered_at=row.answered_at,
+                    )
+                )
+            return {item_id: tuple(items) for item_id, items in answers.items()}
+
     def get_completions(self, user_id: int) -> tuple[CompletionRecord, ...]:
         with Session(self._engine) as session:
             rows = session.scalars(

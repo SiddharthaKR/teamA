@@ -53,7 +53,8 @@ from .profile import (
 from .settings import Settings, get_settings
 from .core.language import LanguageToolkit
 from .language.sudachi_toolkit import SudachiToolkit
-from .progress_view import build_progress_view, load_milestones
+from .core.progress import ItemStatus, item_status
+from .progress_view import build_progress_history, build_progress_view, load_milestones
 
 PageRenderer = Callable[[], None]
 
@@ -442,6 +443,8 @@ def render_home(
     if isinstance(active_review, ActiveReview):
         _render_due_review(service, user_id, active_review)
         return
+
+    _render_this_week(service, user_id)
 
     summary = st.session_state.get("last_review_summary")
     if isinstance(summary, dict):
@@ -1393,6 +1396,130 @@ def render_translate() -> None:
     st.info("Workplace translation will be added in a later increment.")
 
 
+def _week_label(week) -> str:
+    return f"{week:%b} {week.day}"
+
+
+def _render_over_time(history) -> None:
+    """Change over time (decision 15): mastered items per week and recall after a gap."""
+
+    if not history.weeks:
+        return
+    st.subheader("Over time")
+    st.caption(
+        "Items mastered: words and grammar points at mastery 0.80 or more at the end of each "
+        "week (weeks start Monday, Japan time)."
+    )
+    mastered_rows = [
+        {"Week": _week_label(week.week), "Items mastered": week.mastered} for week in history.weeks
+    ]
+    top = max(1, max(row["Items mastered"] for row in mastered_rows))
+    st.vega_lite_chart(
+        mastered_rows,
+        {
+            "height": 220,
+            "mark": {"type": "line", "strokeWidth": 2, "point": {"filled": True, "size": 64}},
+            "encoding": {
+                "x": {
+                    "field": "Week",
+                    "type": "ordinal",
+                    "sort": None,
+                    "axis": {"labelAngle": 0, "title": "Week from"},
+                },
+                "y": {
+                    "field": "Items mastered",
+                    "type": "quantitative",
+                    "scale": {"domain": [0, top], "nice": True},
+                    "axis": {"format": "d", "tickMinStep": 1, "title": "Items mastered"},
+                },
+                "tooltip": [
+                    {"field": "Week", "type": "ordinal", "title": "Week from"},
+                    {"field": "Items mastered", "type": "quantitative"},
+                ],
+            },
+        },
+        width="stretch",
+    )
+    recall = [
+        {
+            "Week": _week_label(week.week),
+            "Recall %": round(week.recall_rate * 100),
+            "Answers after a gap": week.recall_total,
+        }
+        for week in history.weeks
+        if week.recall_rate is not None
+    ]
+    if recall:
+        st.caption(
+            "Recall: share of answers right when the item was last seen 12 hours or more before. "
+            "Remembering after a gap is the clearest sign of learning."
+        )
+        st.vega_lite_chart(
+            recall,
+            {
+                "height": 200,
+                "mark": {"type": "bar", "cornerRadiusEnd": 4, "width": {"band": 0.6}},
+                "encoding": {
+                    "x": {"field": "Week", "type": "ordinal", "sort": None, "axis": {"labelAngle": 0, "title": "Week from"}},
+                    "y": {
+                        "field": "Recall %",
+                        "type": "quantitative",
+                        "scale": {"domain": [0, 100]},
+                        "axis": {"format": "d", "title": "Recalled (%)"},
+                    },
+                    "tooltip": [
+                        {"field": "Week", "type": "ordinal", "title": "Week from"},
+                        {"field": "Recall %", "type": "quantitative", "title": "Recalled (%)"},
+                        {"field": "Answers after a gap", "type": "quantitative"},
+                    ],
+                },
+            },
+            width="stretch",
+        )
+    with st.expander("Weekly numbers as a table"):
+        st.dataframe(
+            [
+                {
+                    "Week from": week.week.isoformat(),
+                    "Items mastered": week.mastered,
+                    "Recall answers": week.recall_total,
+                    "Recalled": week.recall_correct,
+                    "Recall %": (
+                        f"{week.recall_rate:.0%}" if week.recall_rate is not None else "-"
+                    ),
+                }
+                for week in history.weeks
+            ],
+            hide_index=True,
+            width="stretch",
+        )
+
+
+def _render_this_week(service: LessonService, user_id: int) -> None:
+    """The Home card (decision 15): what moved this week."""
+
+    answers = service.get_graded_answers(user_id)
+    if not answers:
+        return
+    now = service.now()
+    week = build_progress_history(answers, now).this_week
+    slipping = sum(
+        item_status(record, now) is ItemStatus.SLIPPING for record in service.get_progress(user_id)
+    )
+    st.subheader("This week")
+    newly, recalled, answered, slipping_column = st.columns(4)
+    newly.metric("Newly mastered", week.newly_mastered)
+    recalled.metric(
+        "Recalled after a gap",
+        f"{week.recall_rate:.0%}" if week.recall_rate is not None else "-",
+        help="Right answers on items last seen 12 hours or more before.",
+    )
+    answered.metric("Answers", week.answers)
+    slipping_column.metric("Slipping", slipping)
+    if week.recall_total:
+        st.caption(f"{week.recall_correct} of {week.recall_total} answers after a gap were right.")
+
+
 def render_progress(
     service: LessonService | None = None,
     user_id: int | None = None,
@@ -1407,8 +1534,10 @@ def render_progress(
         st.info("Start a lesson to begin tracking your progress.")
         return
 
-    view = build_progress_view(
-        progress, service.now(), toolkit, load_milestones()
+    milestones = load_milestones()
+    view = build_progress_view(progress, service.now(), toolkit, milestones)
+    history = build_progress_history(
+        service.get_graded_answers(user_id), service.now(), toolkit, milestones
     )
     columns = st.columns(len(view.status_counts))
     for column, (status, count) in zip(columns, view.status_counts.items()):
@@ -1417,6 +1546,7 @@ def render_progress(
         "Mastered = recalled correctly on separate days in two question types. "
         "Slipping = answered wrong last time, or a review is well overdue."
     )
+    _render_over_time(history)
 
     if view.milestones:
         st.subheader("Milestones")
@@ -1432,6 +1562,11 @@ def render_progress(
                 text=(
                     f"{item.mastered} of {item.total} words and grammar points mastered "
                     f"({item.share:.0%}, target {milestone.coverage_target:.0%})"
+                    + (
+                        f" · {history.milestone_change[milestone.id] * 100:+.1f} points in 4 weeks"
+                        if milestone.id in history.milestone_change
+                        else ""
+                    )
                 ),
             )
             with st.expander(f"What {milestone.name} covers"):
