@@ -62,7 +62,7 @@ def assert_t05_schema(database_path: Path) -> None:
         ).fetchall()
         violations = connection.execute("PRAGMA foreign_key_check").fetchall()
 
-    assert revision == ("20260903_0006",)
+    assert revision == ("20261024_0009",)
     assert user_columns == {
         "id",
         "username",
@@ -91,6 +91,7 @@ def assert_t05_schema(database_path: Path) -> None:
     assert learning_item_columns == {
         "canonical_id",
         "category",
+        "expression",
         "jlpt_level",
         "jlpt_provenance",
         "jlpt_confidence",
@@ -125,6 +126,7 @@ def assert_t05_schema(database_path: Path) -> None:
         "answer_confidence",
         "is_correct",
         "is_retry",
+        "is_graded",
         "outcome",
         "policy_version",
         "answered_at",

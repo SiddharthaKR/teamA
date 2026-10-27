@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,6 +36,15 @@ class Settings(BaseSettings):
     # Trades more provider requests for lower wall-clock latency.
     parallel_explanations: bool = False
     explanation_workers: int = 4
+    # "live" calls the configured endpoint; "mock" replays offline fixtures and needs
+    # no credentials; "record" calls the endpoint and appends every response to
+    # llm_recording_path so PUBLIC golden-set outputs can become fixtures.
+    llm_mode: Literal["live", "mock", "record"] = "live"
+    mock_fixture_dir: str = "fixtures/llm"
+    llm_recording_path: str = "data/llm-recordings/recordings.jsonl"
+    # Team accuracy review (decision 9): shows "right / wrong" controls on generated
+    # content and an Accuracy page. For reviewers only; snapshots keep reviewed text.
+    reviewer_mode: bool = False
 
     @property
     def model_configured(self) -> bool:
@@ -48,6 +58,12 @@ class Settings(BaseSettings):
                 self.fallback_model,
             )
         )
+
+    @property
+    def generation_available(self) -> bool:
+        """Return whether model-backed features can run (live/record keys, or mock mode)."""
+
+        return self.llm_mode == "mock" or self.model_configured
 
     @property
     def model_status(self) -> str:

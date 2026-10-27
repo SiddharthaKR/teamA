@@ -6,3 +6,6 @@ python-pptx==1.0.2
 requests==2.34.2
 SQLAlchemy==2.0.52
 streamlit==1.62.0
+SudachiPy==0.7.0
+SudachiDict-core==20261015
+openjlpt==0.1.0

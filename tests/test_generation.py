@@ -12,16 +12,18 @@ from japanese_workplace_tutor.database import create_database_engine
 from japanese_workplace_tutor.generation import (
     GenerationError,
     GeneratedLessonContentPackage,
-    GeneratedLessonPackage,
     GeneratedQuizPackage,
     LessonGenerationService,
     ScenarioInput,
     ScenarioMode,
-    _canonical_item_id,
     detect_scenario_mode,
     expected_line_count,
 )
+from japanese_workplace_tutor.features.lessons import LessonGenerator, canonical_item_id
+from japanese_workplace_tutor.language.sudachi_toolkit import SudachiToolkit
 from japanese_workplace_tutor.lesson import LessonService
+from japanese_workplace_tutor.prompts import lessons as lesson_prompts
+from japanese_workplace_tutor.schemas.lessons import validate_explanations
 from japanese_workplace_tutor.lesson import ItemCategory, ProgressRecord
 from japanese_workplace_tutor.profile import JapaneseLevel, ProfileRecord, LevelSource
 from japanese_workplace_tutor.settings import Settings
@@ -397,8 +399,9 @@ DIALOGUE_TEXTS = (
     "では、よろしくお願いします。",
     "はい、よろしくお願いします。",
 )
+TOOLKIT = SudachiToolkit.shared()
 TARGET_ITEM_IDS = tuple(
-    _canonical_item_id(category, expression)
+    canonical_item_id(category, expression, TOOLKIT)
     for category, expression in (
         (ItemCategory.VOCABULARY, "仕様"),
         (ItemCategory.GRAMMAR, "〜てもよろしいでしょうか"),
@@ -473,26 +476,27 @@ def quiz_payload() -> dict[str, object]:
 
 def conversation_quiz_payload() -> dict[str, object]:
     payload = quiz_payload()
-    remapped = dict(
-        zip(
-            (item["canonical_id"] for item in VALID_PAYLOAD["lesson"]["items"]),
-            TARGET_ITEM_IDS,
-            strict=True,
+    # Map by expression, not position: the item order differs between the two
+    # payloads, and code verification caught questions attached to the wrong item.
+    remapped = {
+        item["canonical_id"]: canonical_item_id(
+            ItemCategory(item["category"]), item["expression"], TOOLKIT
         )
-    )
+        for item in VALID_PAYLOAD["lesson"]["items"]
+    }
     for question in (*payload["questions"], *payload["retry_questions"]):
         question["item_id"] = remapped[question["item_id"]]
     return payload
 
 
 def test_mode_detection_and_direct_tsuzumi_success(caplog: pytest.LogCaptureFixture) -> None:
-    transport = FakeTransport([json.dumps(VALID_PAYLOAD)])
+    transport = FakeTransport([json.dumps(conversation_payload())])
     generation_logger = logging.getLogger("japanese_workplace_tutor.generation")
     generation_logger.disabled = False
     generation_logger.propagate = True
     caplog.set_level(logging.INFO, logger=generation_logger.name)
 
-    result = generator(transport).generate(
+    result = generator(transport).generate_lesson_content(
         "I need to clarify a software requirement", ScenarioMode.GENERATE, profile()
     )
 
@@ -501,6 +505,7 @@ def test_mode_detection_and_direct_tsuzumi_success(caplog: pytest.LogCaptureFixt
     assert result.provider_name == "Tsuzumi 2"
     assert transport.calls == ["tsuzumi-id"]
     assert "Tsuzumi 2" in caplog.text
+    assert "prompt_version=lessons-v1 data_class=public" in caplog.text
     assert "clarify a software requirement" not in caplog.text
 
 
@@ -536,11 +541,11 @@ def test_split_contracts_reject_missing_lines_and_unknown_quiz_items() -> None:
     scenario_input = ScenarioInput(
         scenario="Clarify a requirement", mode=ScenarioMode.GENERATE
     )
-    content_package = LessonGenerationService._normalized_content_package(
+    content_package = LessonGenerator._normalized_content_package(
         content_package, scenario_input
     )
     with pytest.raises(ValueError, match="exactly 10 dialogue lines"):
-        LessonGenerationService._validate_content_mode(
+        LessonGenerator._validate_content_mode(
             content_package, scenario_input
         )
 
@@ -550,7 +555,7 @@ def test_split_contracts_reject_missing_lines_and_unknown_quiz_items() -> None:
     package = GeneratedQuizPackage.model_validate(invalid_quiz)
     draft = GeneratedLessonContentPackage.model_validate(content_payload())
     with pytest.raises(ValueError, match="lesson target item"):
-        LessonGenerationService._validate_quiz_contract(package, draft.lesson)
+        LessonGenerator._validate_quiz_contract(package, draft.lesson)
 
 
 def test_generated_passage_is_canonicalized_from_explained_dialogue_lines() -> None:
@@ -644,13 +649,13 @@ def test_a_primary_success_clears_earlier_failures() -> None:
 
 
 def test_primary_repair_then_gpt_fallback_for_invalid_output() -> None:
-    invalid_key = json.loads(json.dumps(VALID_PAYLOAD))
-    invalid_key["lesson"]["questions"][0]["item_id"] = "missing:item"
+    too_short = conversation_payload()
+    too_short["lines"] = too_short["lines"][:9]
     transport = FakeTransport(
-        ["not-json", json.dumps(invalid_key), json.dumps(VALID_PAYLOAD)]
+        ["not-json", json.dumps(too_short), json.dumps(conversation_payload())]
     )
 
-    result = generator(transport).generate(
+    result = generator(transport).generate_lesson_content(
         "Clarify a requirement", ScenarioMode.GENERATE, profile()
     )
 
@@ -659,13 +664,18 @@ def test_primary_repair_then_gpt_fallback_for_invalid_output() -> None:
 
 
 def test_gpt_validation_failure_gets_one_repair_attempt() -> None:
-    invalid_retry = json.loads(json.dumps(VALID_PAYLOAD))
-    invalid_retry["retry_questions"][0]["form"] = "meaning"
+    japanese_english_title = conversation_payload()
+    japanese_english_title["english_title"] = "仕様の確認"
     transport = FakeTransport(
-        ["bad", "still bad", json.dumps(invalid_retry), json.dumps(VALID_PAYLOAD)]
+        [
+            "bad",
+            "still bad",
+            json.dumps(japanese_english_title),
+            json.dumps(conversation_payload()),
+        ]
     )
 
-    result = generator(transport).generate(
+    result = generator(transport).generate_lesson_content(
         "Clarify a requirement", ScenarioMode.GENERATE, profile()
     )
 
@@ -674,17 +684,17 @@ def test_gpt_validation_failure_gets_one_repair_attempt() -> None:
 
 
 def test_invalid_answer_key_is_rejected_before_rendering() -> None:
-    invalid_key = json.loads(json.dumps(VALID_PAYLOAD))
-    invalid_key["lesson"]["questions"][0]["correct_option_index"] = 4
+    invalid_key = quiz_payload()
+    invalid_key["questions"][0]["correct_option_index"] = 4
 
     with pytest.raises(ValueError):
-        GeneratedLessonPackage.model_validate(invalid_key)
+        GeneratedQuizPackage.model_validate(invalid_key)
 
 
 def test_primary_repair_success_does_not_fall_back() -> None:
-    transport = FakeTransport([TimeoutError(), json.dumps(VALID_PAYLOAD)])
+    transport = FakeTransport(["not-json", json.dumps(conversation_payload())])
 
-    result = generator(transport).generate(
+    result = generator(transport).generate_lesson_content(
         "Clarify a requirement", ScenarioMode.GENERATE, profile()
     )
 
@@ -692,67 +702,69 @@ def test_primary_repair_success_does_not_fall_back() -> None:
     assert transport.calls == ["tsuzumi-id", "tsuzumi-id"]
 
 
+def explain_payload(text: str) -> dict[str, object]:
+    line = generated_line(0, text)
+    line["vocabulary"].append(
+        language_point("確認", "かくにん", "confirmation", is_quiz_target=True)
+    )
+    return {
+        "topic_id": VALID_PAYLOAD["lesson"]["topic_id"],
+        "japanese_title": "仕様の確認",
+        "english_title": "Confirming a Requirement",
+        "difficulty": "JLPT N4",
+        "recap": VALID_PAYLOAD["lesson"]["recap"],
+        "lines": [line],
+    }
+
+
 def test_japanese_text_scenario_generates_in_explain_mode() -> None:
     scenario = "仕様について確認してもよろしいでしょうか。"
-    explain_payload = json.loads(json.dumps(VALID_PAYLOAD))
-    explain_payload["lesson"]["passage"] = scenario
-    explain_payload["line_explanations"] = [
-        {
-            **explain_payload["line_explanations"][0],
-            "japanese_text": scenario,
-            "vocabulary": [
-                *explain_payload["line_explanations"][0]["vocabulary"],
-                *explain_payload["line_explanations"][1]["vocabulary"],
-            ],
-        }
-    ]
-    for item in explain_payload["lesson"]["items"]:
-        item["example"] = scenario
-    transport = FakeTransport([json.dumps(explain_payload)])
+    transport = FakeTransport([json.dumps(explain_payload(scenario))])
 
-    result = generator(transport).generate(
+    result = generator(transport).generate_lesson_content(
         scenario, detect_scenario_mode(scenario), profile()
     )
 
     assert result.provider_name == "Tsuzumi 2"
-    assert result.lesson.title == VALID_PAYLOAD["lesson"]["title"]
-    assert result.lesson.passage == scenario
+    assert result.content.title == VALID_PAYLOAD["lesson"]["title"]
+    assert result.content.passage == scenario
     assert result.line_explanations[0].japanese_text == scenario
+    assert all(item.example == scenario for item in result.content.items)
     assert transport.calls == ["tsuzumi-id"]
 
 
 def test_explain_mode_rejects_added_or_rewritten_japanese_text() -> None:
-    transport = FakeTransport([json.dumps(VALID_PAYLOAD)] * 4)
+    rewritten = json.dumps(explain_payload("仕様について確認してもよろしいでしょうか。"))
+    transport = FakeTransport([rewritten] * 4)
 
     with pytest.raises(GenerationError, match="could not generate"):
-        generator(transport).generate(
+        generator(transport).generate_lesson_content(
             "会議の日程を確認したいです。", ScenarioMode.EXPLAIN, profile()
         )
 
 
 def test_generated_package_requires_complete_line_explanations() -> None:
-    missing_line = json.loads(json.dumps(VALID_PAYLOAD))
-    missing_line["line_explanations"].pop()
+    package = GeneratedLessonContentPackage.model_validate(content_payload())
 
     with pytest.raises(ValueError, match="every passage line"):
-        GeneratedLessonPackage.model_validate(missing_line)
+        validate_explanations(package.lesson, package.line_explanations[:-1])
 
 
 def test_generated_package_rejects_english_only_quiz_targets() -> None:
-    english_target = json.loads(json.dumps(VALID_PAYLOAD))
+    english_target = content_payload()
     english_target["lesson"]["items"][0]["expression"] = "requirement"
     english_target["line_explanations"][0]["vocabulary"][0][
         "expression"
     ] = "requirement"
 
     with pytest.raises(ValueError, match="Japanese language items"):
-        GeneratedLessonPackage.model_validate(english_target)
+        GeneratedLessonContentPackage.model_validate(english_target)
 
 
 def test_nomikai_scenario_outranks_technical_profile_in_prompt() -> None:
-    transport = FakeTransport([json.dumps(VALID_PAYLOAD)])
+    transport = FakeTransport([json.dumps(conversation_payload())])
 
-    generator(transport).generate(
+    generator(transport).generate_lesson_content(
         "Talk with my manager and colleagues at a nomikai",
         ScenarioMode.GENERATE,
         profile(),
@@ -763,12 +775,10 @@ def test_nomikai_scenario_outranks_technical_profile_in_prompt() -> None:
     assert "must remain social or general" in prompt
     assert "do not introduce requirements, design, coding" in prompt
     assert "required ten-line, two-speaker format" in prompt
-    assert "top-level JSON object has exactly lesson" in transport.system_prompts[0]
-    assert "questions is required inside lesson" in transport.system_prompts[0]
 
 
 def test_content_prompt_requires_atomic_targets_copied_from_explanations() -> None:
-    prompt = LessonGenerationService._content_system_prompt()
+    prompt = lesson_prompts.content_system_prompt()
 
     assert "Japanese Title — English Translation" in prompt
     assert "Invent exactly two random speaker names" in prompt
@@ -781,7 +791,7 @@ def test_content_prompt_requires_atomic_targets_copied_from_explanations() -> No
 
 
 def test_explain_content_prompt_preserves_the_supplied_japanese_text() -> None:
-    prompt = LessonGenerationService._content_system_prompt(ScenarioMode.EXPLAIN)
+    prompt = lesson_prompts.content_system_prompt(ScenarioMode.EXPLAIN)
 
     assert "Copy every non-empty source line" in prompt
     assert "Never add, rewrite, correct, extend, or merge Japanese sentences" in prompt
@@ -793,7 +803,7 @@ def test_dialogue_length_follows_the_learner_level() -> None:
     assert expected_line_count(profile(JapaneseLevel.N4)) == 8
     assert expected_line_count(profile(JapaneseLevel.N3)) == 10
 
-    prompt = LessonGenerationService._content_system_prompt(ScenarioMode.GENERATE, 6)
+    prompt = lesson_prompts.content_system_prompt(ScenarioMode.GENERATE, 6)
 
     assert "Write exactly 6 dialogue lines forming 3 exchanges" in prompt
 
@@ -842,7 +852,7 @@ def test_reading_questions_must_offer_kana_only_options() -> None:
     lesson = GeneratedLessonContentPackage.model_validate(content_payload()).lesson
 
     with pytest.raises(ValueError, match="kana-only options"):
-        LessonGenerationService._validate_quiz_contract(package, lesson)
+        LessonGenerator._validate_quiz_contract(package, lesson)
 
 
 def test_options_of_wildly_different_length_are_rejected() -> None:
@@ -857,7 +867,7 @@ def test_options_of_wildly_different_length_are_rejected() -> None:
     lesson = GeneratedLessonContentPackage.model_validate(content_payload()).lesson
 
     with pytest.raises(ValueError, match="comparable in length"):
-        LessonGenerationService._validate_quiz_contract(package, lesson)
+        LessonGenerator._validate_quiz_contract(package, lesson)
 
 
 def test_hedging_starts_the_fallback_while_the_primary_is_slow() -> None:
@@ -988,7 +998,7 @@ def test_the_split_path_is_off_unless_enabled() -> None:
 
 
 def test_user_prompt_makes_jlpt_level_strict_without_stretch_content() -> None:
-    prompt = LessonGenerationService._user_prompt(
+    prompt = lesson_prompts.user_prompt(
         ScenarioInput(scenario="Nomikai small talk", mode=ScenarioMode.GENERATE),
         profile(JapaneseLevel.N4),
         (),
@@ -1030,16 +1040,16 @@ def test_generated_content_rejects_wrong_title_speakers_or_exchange_count(
     scenario_input = ScenarioInput(
         scenario="Clarify a requirement", mode=ScenarioMode.GENERATE
     )
-    package = LessonGenerationService._normalized_content_package(
+    package = LessonGenerator._normalized_content_package(
         package, scenario_input
     )
 
     with pytest.raises(ValueError, match=message):
-        LessonGenerationService._validate_content_mode(package, scenario_input)
+        LessonGenerator._validate_content_mode(package, scenario_input)
 
 
 def test_blank_scenario_requests_variety_and_uses_learning_history() -> None:
-    transport = FakeTransport([json.dumps(VALID_PAYLOAD)])
+    transport = FakeTransport([json.dumps(conversation_payload())])
     learned_item = ProgressRecord(
         item_id="vocabulary:kakunin",
         category=ItemCategory.VOCABULARY,
@@ -1056,7 +1066,7 @@ def test_blank_scenario_requests_variety_and_uses_learning_history() -> None:
         next_review_at=None,
     )
 
-    generator(transport).generate(
+    generator(transport).generate_lesson_content(
         "",
         ScenarioMode.GENERATE,
         profile(),
@@ -1086,7 +1096,7 @@ def test_total_failure_changes_no_progress(tmp_path: Path) -> None:
     transport = FakeTransport(["bad", "still bad", RuntimeError("provider down")])
 
     with pytest.raises(GenerationError, match="could not generate"):
-        generator(transport).generate(
+        generator(transport).generate_lesson_content(
             "Keep this scenario", ScenarioMode.GENERATE, profile()
         )
 

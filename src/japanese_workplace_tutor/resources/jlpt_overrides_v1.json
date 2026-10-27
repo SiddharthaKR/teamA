@@ -1,0 +1,112 @@
+{
+ "version": "override-v1",
+ "status": "Corrections for known OpenJLPT 0.1.0 data errors; team review pending.",
+ "entries": [
+  {
+   "lemma": "いい",
+   "level": "N5",
+   "readings": [
+    "いい"
+   ],
+   "meanings": [
+    "good"
+   ],
+   "note": "OpenJLPT lists N3"
+  },
+  {
+   "lemma": "良い",
+   "level": "N5",
+   "readings": [
+    "よい",
+    "いい"
+   ],
+   "meanings": [
+    "good"
+   ],
+   "note": "OpenJLPT lists N1"
+  },
+  {
+   "lemma": "何時",
+   "level": "N5",
+   "readings": [
+    "なんじ"
+   ],
+   "meanings": [
+    "what time"
+   ],
+   "note": "OpenJLPT maps to いつ at N1"
+  },
+  {
+   "lemma": "準備",
+   "level": "N4",
+   "readings": [
+    "じゅんび"
+   ],
+   "meanings": [
+    "preparation",
+    "to prepare"
+   ],
+   "note": "reading stored as じゅんびする"
+  },
+  {
+   "lemma": "ありがとう",
+   "level": "N5",
+   "readings": [
+    "ありがとう"
+   ],
+   "meanings": [
+    "thank you"
+   ],
+   "note": "OpenJLPT lists N3"
+  },
+  {
+   "lemma": "すみません",
+   "level": "N5",
+   "readings": [
+    "すみません"
+   ],
+   "meanings": [
+    "excuse me",
+    "sorry"
+   ],
+   "note": "OpenJLPT lists N3"
+  },
+  {
+   "lemma": "よろしく",
+   "level": "N5",
+   "readings": [
+    "よろしく"
+   ],
+   "meanings": [
+    "best regards",
+    "please treat me well"
+   ],
+   "note": "OpenJLPT lists N3 with a broken reading"
+  },
+  {
+   "lemma": "願う",
+   "level": "N5",
+   "readings": [
+    "ねがう"
+   ],
+   "meanings": [
+    "to request",
+    "to wish"
+   ],
+   "note": "N5 as used in お願いします; the verb alone is N3"
+  },
+  {
+   "lemma": "時",
+   "level": "N5",
+   "readings": [
+    "とき",
+    "じ"
+   ],
+   "meanings": [
+    "time",
+    "o'clock"
+   ],
+   "note": "OpenJLPT lists N3; counter じ is N5"
+  }
+ ]
+}

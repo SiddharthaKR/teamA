@@ -1,0 +1,49 @@
+[
+  {
+    "match": [],
+    "response": {
+      "goal": "Agree on a new meeting time with your manager and offer to prepare",
+      "setting": "Your manager stops by your desk the afternoon before the meeting",
+      "learner_role": "team member",
+      "counterpart_role": "your manager",
+      "success_criteria": [
+        "accept or propose a concrete time",
+        "use polite です/ます forms",
+        "offer to prepare in advance"
+      ],
+      "toolkit": [
+        {
+          "japanese": "〜はどうですか",
+          "reading": "はどうですか",
+          "meaning": "How about ...?",
+          "kind": "target"
+        },
+        {
+          "japanese": "準備しておきます",
+          "reading": "じゅんびしておきます",
+          "meaning": "I'll prepare in advance",
+          "kind": "target"
+        },
+        {
+          "japanese": "もう一度お願いします",
+          "reading": "もういちどおねがいします",
+          "meaning": "Once more, please",
+          "kind": "recovery"
+        }
+      ],
+      "opening_line": "明日の会議、時間を変えてもいいですか。",
+      "opening_options": [
+        "はい、大丈夫です。何時がいいですか。",
+        "うん、いいよ。",
+        "会議はいやです。"
+      ],
+      "curveball_type": "follow-up request",
+      "curveball_line": "それから、資料も準備してもらえますか。",
+      "curveball_options": [
+        "はい、三時までに準備しておきます。",
+        "え、なんで？",
+        "資料は好きじゃないです。"
+      ]
+    }
+  }
+]

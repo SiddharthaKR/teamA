@@ -1,7 +1,5 @@
 """Validated, user-scoped learner profile persistence."""
 
-from dataclasses import dataclass
-from enum import StrEnum
 import unicodedata
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -9,6 +7,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from .core.learner import JapaneseLevel, LevelSource, ProfileRecord  # noqa: F401 (re-exported)
 from .models import LearnerProfile
 
 MAX_ROLE_LENGTH = 256
@@ -42,22 +41,6 @@ ROLE_TASK_SUGGESTIONS: dict[str, tuple[str, ...]] = {
         "Present technical results",
     ),
 }
-
-
-class JapaneseLevel(StrEnum):
-    COMPLETE_BEGINNER = "Complete beginner"
-    N5 = "JLPT N5"
-    N4 = "JLPT N4"
-    N3 = "JLPT N3"
-    N2 = "JLPT N2"
-    N1 = "JLPT N1"
-    UNSURE = "Unsure"
-
-
-class LevelSource(StrEnum):
-    SELF_REPORTED = "self-reported"
-    PLACEMENT_ESTIMATED = "placement-estimated"
-    PERFORMANCE_ESTIMATED = "performance-estimated"
 
 
 def _normalize_text(value: str) -> str:
@@ -121,19 +104,6 @@ class ProfileNotFoundError(LookupError):
 
 class ProfileAlreadyExistsError(ValueError):
     pass
-
-
-@dataclass(frozen=True)
-class ProfileRecord:
-    user_id: int
-    role: str
-    tasks: tuple[str, ...]
-    tools_domain: str | None
-    declared_level: JapaneseLevel
-    estimated_working_level: JapaneseLevel | None
-    level_source: LevelSource
-    level_confidence: float
-    romaji_preference: bool
 
 
 def _validated_input(**values: object) -> ProfileInput:

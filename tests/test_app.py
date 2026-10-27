@@ -293,6 +293,13 @@ def test_fixture_lesson_can_be_answered_completed_and_viewed_in_progress(
     app.sidebar.radio[0].set_value("Progress").run(timeout=10)
     assert not app.exception
     assert app.dataframe
+    assert [header.value for header in app.subheader] == ["Over time", "Milestones", "Coverage", "Your items"]
+    assert "進捗" in app.dataframe[-1].value["Item"].tolist()
+
+    app.sidebar.radio[0].set_value("Home").run(timeout=10)
+    assert not app.exception
+    assert "This week" in [header.value for header in app.subheader]
+    assert [metric.label for metric in app.metric] == ["Newly mastered", "Recalled after a gap", "Answers", "Slipping"]
 
     settings = Settings(
         database_url=f"sqlite:///{database_path.as_posix()}", _env_file=None
@@ -541,3 +548,113 @@ def test_glossary_collapses_repeated_expressions() -> None:
     label, entry, line_numbers = glossary[0]
     assert (label, entry.expression) == ("Vocabulary", "確認")
     assert line_numbers == [1, 2, 3]
+
+
+def test_mock_mode_generates_a_lesson_offline(monkeypatch, tmp_path: Path) -> None:
+    database_path = tmp_path / "app.db"
+    prepare_database(monkeypatch, database_path)
+    for name in ("JLT_MODEL_BASE_URL", "JLT_MODEL_API_KEY", "JLT_PRIMARY_MODEL", "JLT_FALLBACK_MODEL"):
+        monkeypatch.setenv(name, "")
+    monkeypatch.setenv("JLT_LLM_MODE", "mock")
+    monkeypatch.setenv("JLT_MOCK_FIXTURE_DIR", str(PROJECT_ROOT / "fixtures" / "llm"))
+    get_settings.cache_clear()
+    user = create_completed_user(database_path)
+    app = AppTest.from_file(str(PROJECT_ROOT / "app.py")).run()
+    app.session_state["authenticated_user_id"] = user.id
+    app.session_state["authenticated_username"] = user.username
+    app.run()
+
+    assert any("mock mode" in info.value for info in app.info)
+    app.sidebar.radio[0].set_value("Learn").run()
+    app.button(key="generate_scenario_lesson").click().run()
+
+    assert not app.exception
+    assert any(
+        caption.value == "Lesson generated with Mock (offline fixtures)"
+        for caption in app.caption
+    )
+    get_settings.cache_clear()
+
+
+def _signed_in_mock_app(monkeypatch, tmp_path: Path) -> AppTest:
+    database_path = tmp_path / "app.db"
+    prepare_database(monkeypatch, database_path)
+    for name in ("JLT_MODEL_BASE_URL", "JLT_MODEL_API_KEY", "JLT_PRIMARY_MODEL", "JLT_FALLBACK_MODEL"):
+        monkeypatch.setenv(name, "")
+    monkeypatch.setenv("JLT_LLM_MODE", "mock")
+    monkeypatch.setenv("JLT_MOCK_FIXTURE_DIR", str(PROJECT_ROOT / "fixtures" / "llm"))
+    get_settings.cache_clear()
+    user = create_completed_user(database_path)
+    app = AppTest.from_file(str(PROJECT_ROOT / "app.py")).run()
+    app.session_state["authenticated_user_id"] = user.id
+    app.session_state["authenticated_username"] = user.username
+    app.run()
+    return app
+
+
+def test_typed_scenario_needs_public_content_confirmation(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.sidebar.radio[0].set_value("Learn").run()
+
+    app.text_area(key="lesson_scenario").input("Ask my manager to move the meeting").run()
+    assert app.button(key="generate_scenario_lesson").disabled
+    assert any("Do not enter or upload work data" in warning.value for warning in app.warning)
+
+    app.checkbox(key="scenario_public_ok").check().run()
+    assert not app.button(key="generate_scenario_lesson").disabled
+    get_settings.cache_clear()
+
+
+def test_deck_localizer_needs_public_content_confirmation(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.sidebar.radio[0].set_value("Presentation").run()
+
+    assert app.button(key="localize_deck").disabled
+    app.checkbox(key="deck_public_ok").check().run()
+    assert not app.button(key="localize_deck").disabled
+    get_settings.cache_clear()
+
+
+def test_reviewer_mode_adds_accuracy_page(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("JLT_REVIEWER_MODE", "true")
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+
+    assert "Accuracy" in app.sidebar.radio[0].options
+    app.sidebar.radio[0].set_value("Accuracy").run()
+    assert not app.exception
+    assert any("No reviews yet" in info.value for info in app.info)
+    get_settings.cache_clear()
+
+
+def test_reviewer_panel_records_verdicts_for_a_generated_lesson(monkeypatch, tmp_path: Path) -> None:
+    from japanese_workplace_tutor.generation import LessonGenerationService, ScenarioMode
+    from japanese_workplace_tutor.llm.mock import MockTransport
+    from japanese_workplace_tutor.review import ReviewService
+
+    monkeypatch.setenv("JLT_REVIEWER_MODE", "true")
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    settings = Settings(database_url=f"sqlite:///{(tmp_path / 'app.db').as_posix()}", _env_file=None)
+    engine = create_database_engine(settings)
+    lessons = LessonService(engine)
+    generation = LessonGenerationService(
+        MockTransport(PROJECT_ROOT / "fixtures" / "llm"), "mock-primary", "mock-fallback"
+    )
+    user_id = app.session_state["authenticated_user_id"]
+    profile = ProfileService(engine).get_profile(user_id)
+    draft = generation.generate_lesson_content("", ScenarioMode.GENERATE, profile)
+    active = lessons.activate_generated_quiz(
+        lessons.start_generated_lesson_draft(user_id, draft), generation.generate_quiz(draft.content)
+    )
+    app.session_state["active_lesson"] = active
+    app.sidebar.radio[0].set_value("Learn").run()
+
+    assert not app.exception
+    first_question = active.lesson.questions[0].question_id
+    key = f"review_{active.lesson_session_id}_question_{first_question}"
+    app.radio(key=key).set_value("Wrong").run()
+    app.button(key=f"save_review_{active.lesson_session_id}").click().run()
+
+    assert not app.exception
+    assert ReviewService(engine).report().wrong == 1
+    engine.dispose()
+    get_settings.cache_clear()

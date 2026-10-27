@@ -17,6 +17,9 @@ dependencies = [
     "requests==2.34.2",
     "SQLAlchemy==2.0.52",
     "streamlit==1.62.0",
+    "SudachiPy==0.7.0",
+    "SudachiDict-core==20261015",
+    "openjlpt==0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -27,7 +30,61 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"japanese_workplace_tutor.resources" = ["*.json"]
+
 [tool.pytest.ini_options]
 addopts = "-q"
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.importlinter]
+root_package = "japanese_workplace_tutor"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Core is pure: no IO, UI, database, network or outer layers"
+type = "forbidden"
+source_modules = ["japanese_workplace_tutor.core"]
+forbidden_modules = [
+    "streamlit", "sqlalchemy", "requests", "alembic",
+    "japanese_workplace_tutor.app", "japanese_workplace_tutor.generation",
+    "japanese_workplace_tutor.features", "japanese_workplace_tutor.prompts",
+    "japanese_workplace_tutor.schemas", "japanese_workplace_tutor.llm",
+    "japanese_workplace_tutor.lesson", "japanese_workplace_tutor.profile",
+    "japanese_workplace_tutor.models", "japanese_workplace_tutor.database",
+    "japanese_workplace_tutor.auth", "japanese_workplace_tutor.settings",
+    "japanese_workplace_tutor.language", "sudachipy", "openjlpt",
+]
+
+[[tool.importlinter.contracts]]
+name = "Features, prompts and schemas never touch transports, UI or the database"
+type = "forbidden"
+source_modules = [
+    "japanese_workplace_tutor.features", "japanese_workplace_tutor.prompts",
+    "japanese_workplace_tutor.schemas",
+]
+forbidden_modules = [
+    "streamlit", "sqlalchemy", "requests",
+    "japanese_workplace_tutor.llm.openai_transport", "japanese_workplace_tutor.llm.mock",
+    "japanese_workplace_tutor.app", "japanese_workplace_tutor.models",
+    "japanese_workplace_tutor.database", "japanese_workplace_tutor.lesson",
+    "japanese_workplace_tutor.profile", "japanese_workplace_tutor.language",
+    "sudachipy", "openjlpt",
+]
+
+[[tool.importlinter.contracts]]
+name = "Prompts and schemas are leaves above core (no features, no gateway)"
+type = "forbidden"
+source_modules = ["japanese_workplace_tutor.prompts", "japanese_workplace_tutor.schemas"]
+forbidden_modules = ["japanese_workplace_tutor.features", "japanese_workplace_tutor.llm"]
+
+[[tool.importlinter.contracts]]
+name = "Only the app composition root picks a transport"
+type = "forbidden"
+source_modules = [
+    "japanese_workplace_tutor.lesson", "japanese_workplace_tutor.profile",
+    "japanese_workplace_tutor.features", "japanese_workplace_tutor.llm.gateway",
+]
+forbidden_modules = ["japanese_workplace_tutor.llm.openai_transport", "japanese_workplace_tutor.llm.mock"]
+

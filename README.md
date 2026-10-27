@@ -21,7 +21,42 @@ Two-model fallback and schema validation keep generation working under failure; 
 ### Demo
 See [`DEMO_GUIDE.md`](./DEMO_GUIDE.md). Sample input: `samples/demo_deck.pptx`; reference output: `samples/expected_output.md`. Keep `JLT_PRIMARY_MODEL=gpt-5-nano` for a fast demo.
 
-## Requirements
+## Code layout (v2)
+
+Dependencies point inward toward a pure core; `lint-imports` (run by the test suite) fails the build if they do not.
+
+| Package | Holds | May not import |
+|---|---|---|
+| `core/` | Domain types (items, questions, learner, inputs), Japanese script helpers, the progress policy `t05-v1` as pure functions with `replay()`, ports (`ModelTransport`, `DataClass`) | Anything with IO: Streamlit, SQLAlchemy, requests, or any outer package |
+| `schemas/` | Pydantic contracts the model must satisfy | Features, the gateway, transports |
+| `prompts/` | Versioned prompt builders (`PROMPT_VERSION` per feature), pinned byte for byte by `tests/test_prompts.py` | Features, the gateway, transports |
+| `llm/` | `gateway.py`: the single path for model calls (routing, repair, fallback, hedging, PUBLIC/PRIVATE guard). `openai_transport.py`, `mock.py`: adapters | - |
+| `features/` | Lessons, roleplay, presentation: orchestration and acceptance rules | Transports, Streamlit, SQLAlchemy |
+| `generation.py` | `LessonGenerationService`, which composes the gateway and features; the stable import path for the app | - |
+| `lesson.py`, `profile.py`, `models.py` | Persistence; the progress numbers come from `core/progress.py` | - |
+| `app.py` | Streamlit UI and the composition root that picks a transport | - |
+
+Every model task carries a `DataClass`. v1 tags all tasks `PUBLIC` (generic or user-attested content). The gateway refuses `PRIVATE` tasks unless the transport declares `accepts_private_data`, which only a future on-premises adapter will do.
+
+## Trust layer (v2, Phase 2)
+
+Japanese facts come from a local toolkit, not from the model:
+
+- **Tokenizer:** SudachiPy with the core dictionary (dictionary forms and readings).
+- **Levels:** OpenJLPT 0.1.0 (CC BY-SA 4.0) plus `resources/jlpt_overrides_v1.json`, which fixes known errors in that alpha dataset. A word not in the data shows as *unrated*; it never takes the model's guess.
+- **Grammar:** `resources/grammar_points_v1.json`, 56 curated points whose levels still need team review.
+- **Item IDs:** words map to their dictionary form, so 連絡します and 連絡 are one item. Grammar maps to the curated ID.
+- **Answer keys:** a generated question is graded only when code confirms its key. A reading must be in the accepted readings, a meaning must match the reference glosses, and a cloze must reproduce a sentence from the passage with the blank hiding the target item. No distractor may also be right. Other questions stay as practice: their answers are logged with `is_graded = false` and never change mastery or schedules. A quiz needs at least 2 graded questions.
+- **Difficulty:** every draft carries an 80/20 report (familiar, stretch and unrated words for the learner's level). A passage with more than 50% stretch words is regenerated.
+- **Public content only:** typed scenarios and decks need a "public and non-confidential" checkbox, shown beside a do-not-upload-work-data note.
+- **Roleplay and delivery practice (beta):** AI feedback only. Nothing is stored as pass/fail; the learner decides when they are ready.
+
+### Team accuracy review (decision 9)
+
+1. **Review sheet:** `python scripts/export_review_sheet.py --live --limit 20` writes `data/review-sheets/review_sheet.csv` from the golden set. Reviewers fill "Correct? (Y/N)". Then `python scripts/score_review_sheet.py data/review-sheets/review_sheet.csv --target 0.02` prints error rates by kind and by answer-key source.
+2. **In-app reviewer mode:** set `JLT_REVIEWER_MODE=true`. Every lesson gets a panel to mark lines, items and questions right or wrong, and an **Accuracy** page reports the error rate.
+3. **Normal use:** the team uses the app for a couple of weeks and reports problems informally.
+
 
 - Windows with Python 3.14.3 (pinned in `.python-version`)
 - A writable local checkout
@@ -133,8 +168,17 @@ All settings use the `JLT_` environment prefix:
 | `JLT_PRIMARY_MODEL` | For generation | Primary Tsuzumi model ID |
 | `JLT_FALLBACK_MODEL` | For generation | Fallback GPT model ID |
 | `JLT_MODEL_TIMEOUT_SECONDS` | No | Per-attempt provider timeout; defaults to 180 seconds |
+| `JLT_LLM_MODE` | No | `live` (default), `mock` (offline fixtures, no keys needed) or `record` (live calls appended to a JSONL file) |
+| `JLT_MOCK_FIXTURE_DIR` | No | Fixture folder for mock mode; defaults to `fixtures/llm` |
+| `JLT_LLM_RECORDING_PATH` | No | JSONL output for record mode; defaults to `data/llm-recordings/recordings.jsonl` |
 
 Model status is configured only when all four model variables are present. Scenario generation is disabled when any value is absent; all offline features remain available.
+
+### Offline mock mode (v2, Phase 0)
+
+Set `JLT_LLM_MODE=mock` to run the full learning loop without any model credentials. `MockTransport` replays the hand-checked fixtures in `fixtures/llm/` through the real prompts, validators and fallback policy, so tests and demos exercise the same code paths as production. Rebuild the fixtures with `python scripts/build_mock_fixtures.py`; a test fails if the committed files drift from the builder. Mock mode covers surprise and scenario lessons, quizzes and roleplay; Explain mode and the deck localizer have no fixtures yet and fail safely with the normal error message.
+
+`JLT_LLM_MODE=record` calls the live endpoint and appends every prompt and response to `JLT_LLM_RECORDING_PATH`. Record only PUBLIC inputs such as the golden set in `evals/golden/v0.json`, never learner-supplied private text.
 
 ## Database and migrations
 

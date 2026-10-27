@@ -1,0 +1,86 @@
+{
+ "version": "milestones-v1",
+ "status": "Draft finish lines (decision 13); word sets and tasks pending team review.",
+ "milestones": [
+  {
+   "id": "get-by",
+   "name": "1. Get by",
+   "cefr_hint": "about CEFR A2",
+   "summary": "Handle daily office basics: greetings, attendance, simple requests.",
+   "word_sets": [
+    "jlpt-N5",
+    "grammar-N5",
+    "business-attendance",
+    "business-phrases"
+   ],
+   "coverage_target": 0.8,
+   "tasks": {
+    "read": [
+     "Schedule and attendance emails",
+     "Office notices and signs"
+    ],
+    "write": [
+     "Short replies: understood, I will be late, thank you"
+    ],
+    "speak": [
+     "Greetings and a self-introduction",
+     "Asking a colleague for help"
+    ]
+   }
+  },
+  {
+   "id": "take-part",
+   "name": "2. Take part",
+   "cefr_hint": "about CEFR B1",
+   "summary": "Follow routine meetings and report your own progress.",
+   "word_sets": [
+    "jlpt-N4",
+    "grammar-N4",
+    "business-meetings",
+    "business-communication",
+    "business-schedule",
+    "business-organization"
+   ],
+   "coverage_target": 0.8,
+   "tasks": {
+    "read": [
+     "Meeting agendas and minutes",
+     "Routine work emails"
+    ],
+    "write": [
+     "A status email or a meeting summary"
+    ],
+    "speak": [
+     "A 2-3 minute progress update from notes"
+    ]
+   }
+  },
+  {
+   "id": "contribute",
+   "name": "3. Contribute",
+   "cefr_hint": "about CEFR B2",
+   "summary": "Explain your work, discuss it, and write it up.",
+   "word_sets": [
+    "jlpt-N3",
+    "grammar-N3",
+    "business-documents",
+    "business-it",
+    "business-keigo"
+   ],
+   "coverage_target": 0.8,
+   "tasks": {
+    "read": [
+     "Specifications, reports and client emails"
+    ],
+    "write": [
+     "A short report",
+     "A request with reasons"
+    ],
+    "speak": [
+     "Explaining your work and answering questions",
+     "A 5-minute talk"
+    ]
+   }
+  }
+ ]
+}

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import re
 
@@ -12,15 +13,20 @@ SECRET_PATTERNS = {
 }
 
 
+IGNORED_DIRS = {".git", ".pytest_cache", ".venv", "__pycache__", "data", "node_modules"}
+
+
 def tracked_text_files() -> list[Path]:
-    ignored_parts = {".git", ".pytest_cache", ".venv", "__pycache__", "data"}
-    return [
-        path
-        for path in PROJECT_ROOT.rglob("*")
-        if path.is_file()
-        and not ignored_parts.intersection(path.parts)
-        and (path.suffix in TEXT_SUFFIXES or path.name == ".env.example")
-    ]
+    # Prune ignored directories while walking: rglob would still descend into
+    # .venv, which takes minutes on slow or network-mounted file systems.
+    files: list[Path] = []
+    for directory, subdirectories, names in os.walk(PROJECT_ROOT):
+        subdirectories[:] = [name for name in subdirectories if name not in IGNORED_DIRS]
+        for name in names:
+            path = Path(directory) / name
+            if path.suffix in TEXT_SUFFIXES or name == ".env.example":
+                files.append(path)
+    return files
 
 
 def test_repository_contains_no_secret_patterns() -> None:

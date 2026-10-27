@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from japanese_workplace_tutor.auth import AuthenticationService
 from japanese_workplace_tutor.database import create_database_engine
+from japanese_workplace_tutor.core.progress import skill_dimension
 from japanese_workplace_tutor.lesson import (
     FIXTURE_LESSON,
     REVIEW_ITEMS,
@@ -361,7 +362,17 @@ def test_database_excludes_replayable_fixture_content(tmp_path: Path) -> None:
     engine.dispose()
 
     with sqlite3.connect(database_path) as connection:
+        # Item names (one dictionary word or grammar point each) are stored on
+        # purpose for the progress view; everything else stays out.
+        item_names = {
+            row[0]
+            for row in connection.execute(
+                "SELECT expression FROM learning_items WHERE expression IS NOT NULL"
+            )
+        }
+        connection.execute("UPDATE learning_items SET expression = NULL")
         database_dump = "\n".join(connection.iterdump())
+    assert item_names <= {item.expression for item in REVIEW_ITEMS}
 
     prohibited_content = [FIXTURE_LESSON.passage, FIXTURE_LESSON.recap]
     prohibited_content.extend(item.example for item in REVIEW_ITEMS)
@@ -481,6 +492,6 @@ def test_register_questions_score_as_contextual_use() -> None:
     )
 
     assert (
-        LessonService._skill_dimension(question, ItemCategory.VOCABULARY)
+        skill_dimension(question.form, ItemCategory.VOCABULARY)
         is SkillDimension.CONTEXTUAL_USE
     )

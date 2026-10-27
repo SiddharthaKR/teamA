@@ -1,0 +1,15 @@
+[
+  {
+    "match": [],
+    "response": {
+      "goal_achieved": true,
+      "goal_evidence": "The learner accepted the change and asked for a time.",
+      "comprehensible": "yes",
+      "comprehensible_evidence": "Both replies were clear and complete.",
+      "register_appropriate": true,
+      "register_evidence": "Polite です/ます forms were used throughout.",
+      "recovered_from_curveball": "yes",
+      "recovery_evidence": "The learner agreed to prepare the materials by a stated time."
+    }
+  }
+]

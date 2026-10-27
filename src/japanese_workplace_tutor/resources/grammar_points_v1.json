@@ -1,0 +1,731 @@
+{
+ "version": "grammar-list-v1",
+ "status": "Initial reference list; levels follow common JLPT study lists and need team review.",
+ "points": [
+  {
+   "id": "masu",
+   "display": "〜ます",
+   "level": "N5",
+   "meanings": [
+    "polite present",
+    "polite non-past"
+   ],
+   "forms": [
+    "ます"
+   ]
+  },
+  {
+   "id": "masen",
+   "display": "〜ません",
+   "level": "N5",
+   "meanings": [
+    "polite negative"
+   ],
+   "forms": [
+    "ません"
+   ]
+  },
+  {
+   "id": "mashita",
+   "display": "〜ました",
+   "level": "N5",
+   "meanings": [
+    "polite past"
+   ],
+   "forms": [
+    "ました"
+   ]
+  },
+  {
+   "id": "masen-ka",
+   "display": "〜ませんか",
+   "level": "N5",
+   "meanings": [
+    "won't you",
+    "invitation"
+   ],
+   "forms": [
+    "ませんか"
+   ]
+  },
+  {
+   "id": "mashou",
+   "display": "〜ましょう",
+   "level": "N5",
+   "meanings": [
+    "let's"
+   ],
+   "forms": [
+    "ましょう"
+   ]
+  },
+  {
+   "id": "mashou-ka",
+   "display": "〜ましょうか",
+   "level": "N5",
+   "meanings": [
+    "shall I",
+    "shall we",
+    "offer"
+   ],
+   "forms": [
+    "ましょうか"
+   ]
+  },
+  {
+   "id": "tai",
+   "display": "〜たい",
+   "level": "N5",
+   "meanings": [
+    "want to"
+   ],
+   "forms": [
+    "たい",
+    "たいです"
+   ]
+  },
+  {
+   "id": "te-kudasai",
+   "display": "〜てください",
+   "level": "N5",
+   "meanings": [
+    "please do"
+   ],
+   "forms": [
+    "てください",
+    "でください"
+   ]
+  },
+  {
+   "id": "naide-kudasai",
+   "display": "〜ないでください",
+   "level": "N5",
+   "meanings": [
+    "please do not"
+   ],
+   "forms": [
+    "ないでください"
+   ]
+  },
+  {
+   "id": "te-mo-ii",
+   "display": "〜てもいいですか",
+   "level": "N5",
+   "meanings": [
+    "may I",
+    "is it all right to",
+    "permission"
+   ],
+   "forms": [
+    "てもいいですか",
+    "てもいい",
+    "てもいいです",
+    "でもいいですか"
+   ]
+  },
+  {
+   "id": "te-wa-ikenai",
+   "display": "〜てはいけません",
+   "level": "N5",
+   "meanings": [
+    "must not",
+    "not allowed"
+   ],
+   "forms": [
+    "てはいけません",
+    "てはいけない",
+    "ではいけません"
+   ]
+  },
+  {
+   "id": "te-iru",
+   "display": "〜ている",
+   "level": "N5",
+   "meanings": [
+    "ongoing action",
+    "state",
+    "be doing"
+   ],
+   "forms": [
+    "ている",
+    "ています",
+    "でいる",
+    "でいます"
+   ]
+  },
+  {
+   "id": "wa-dou-desu-ka",
+   "display": "〜はどうですか",
+   "level": "N5",
+   "meanings": [
+    "how about",
+    "suggestion"
+   ],
+   "forms": [
+    "はどうですか",
+    "どうですか"
+   ]
+  },
+  {
+   "id": "kara-reason",
+   "display": "〜から",
+   "level": "N5",
+   "meanings": [
+    "because",
+    "so"
+   ],
+   "forms": [
+    "から"
+   ]
+  },
+  {
+   "id": "ga-but",
+   "display": "〜が",
+   "level": "N5",
+   "meanings": [
+    "but",
+    "softening"
+   ],
+   "forms": [
+    "が"
+   ]
+  },
+  {
+   "id": "mae-ni",
+   "display": "〜前に",
+   "level": "N5",
+   "meanings": [
+    "before"
+   ],
+   "forms": [
+    "前に",
+    "まえに"
+   ]
+  },
+  {
+   "id": "ato-de",
+   "display": "〜後で",
+   "level": "N5",
+   "meanings": [
+    "after"
+   ],
+   "forms": [
+    "後で",
+    "あとで",
+    "たあとで"
+   ]
+  },
+  {
+   "id": "deshou",
+   "display": "〜でしょう",
+   "level": "N5",
+   "meanings": [
+    "probably",
+    "right?"
+   ],
+   "forms": [
+    "でしょう"
+   ]
+  },
+  {
+   "id": "te-oku",
+   "display": "〜ておきます",
+   "level": "N4",
+   "meanings": [
+    "do in advance",
+    "do ahead of time"
+   ],
+   "forms": [
+    "ておく",
+    "ておきます",
+    "ておきました",
+    "でおく",
+    "でおきます",
+    "ておいて"
+   ]
+  },
+  {
+   "id": "te-shimau",
+   "display": "〜てしまう",
+   "level": "N4",
+   "meanings": [
+    "end up doing",
+    "completely",
+    "regret"
+   ],
+   "forms": [
+    "てしまう",
+    "てしまいました",
+    "てしまいます",
+    "ちゃう",
+    "でしまう"
+   ]
+  },
+  {
+   "id": "tara",
+   "display": "〜たら",
+   "level": "N4",
+   "meanings": [
+    "if",
+    "when",
+    "after"
+   ],
+   "forms": [
+    "たら",
+    "だら"
+   ]
+  },
+  {
+   "id": "ba",
+   "display": "〜ば",
+   "level": "N4",
+   "meanings": [
+    "if"
+   ],
+   "forms": [
+    "ば",
+    "れば",
+    "えば"
+   ]
+  },
+  {
+   "id": "nakereba-naranai",
+   "display": "〜なければなりません",
+   "level": "N4",
+   "meanings": [
+    "must",
+    "have to"
+   ],
+   "forms": [
+    "なければならない",
+    "なければなりません",
+    "なければいけません",
+    "なくてはいけません",
+    "ないといけません"
+   ]
+  },
+  {
+   "id": "te-moraemasu-ka",
+   "display": "〜てもらえますか",
+   "level": "N4",
+   "meanings": [
+    "could you",
+    "request a favour"
+   ],
+   "forms": [
+    "てもらえますか",
+    "てもらえませんか",
+    "てもらう",
+    "でもらえますか"
+   ]
+  },
+  {
+   "id": "te-itadakemasu-ka",
+   "display": "〜ていただけますか",
+   "level": "N4",
+   "meanings": [
+    "could you please",
+    "polite request"
+   ],
+   "forms": [
+    "ていただけますか",
+    "ていただけませんか",
+    "ていただく",
+    "でいただけますか"
+   ]
+  },
+  {
+   "id": "koto-ga-dekiru",
+   "display": "〜ことができる",
+   "level": "N4",
+   "meanings": [
+    "can",
+    "be able to"
+   ],
+   "forms": [
+    "ことができる",
+    "ことができます"
+   ]
+  },
+  {
+   "id": "tsumori",
+   "display": "〜つもりです",
+   "level": "N4",
+   "meanings": [
+    "intend to",
+    "plan to"
+   ],
+   "forms": [
+    "つもり",
+    "つもりです"
+   ]
+  },
+  {
+   "id": "you-ni-suru",
+   "display": "〜ようにする",
+   "level": "N4",
+   "meanings": [
+    "make an effort to",
+    "make sure to"
+   ],
+   "forms": [
+    "ようにする",
+    "ようにします",
+    "ようにしています"
+   ]
+  },
+  {
+   "id": "kamoshirenai",
+   "display": "〜かもしれません",
+   "level": "N4",
+   "meanings": [
+    "might",
+    "may"
+   ],
+   "forms": [
+    "かもしれない",
+    "かもしれません"
+   ]
+  },
+  {
+   "id": "sou-appearance",
+   "display": "〜そうです (looks like)",
+   "level": "N4",
+   "meanings": [
+    "looks like",
+    "seems"
+   ],
+   "forms": [
+    "そうです",
+    "そう"
+   ]
+  },
+  {
+   "id": "node",
+   "display": "〜ので",
+   "level": "N4",
+   "meanings": [
+    "because",
+    "since"
+   ],
+   "forms": [
+    "ので",
+    "んで"
+   ]
+  },
+  {
+   "id": "noni",
+   "display": "〜のに",
+   "level": "N4",
+   "meanings": [
+    "even though",
+    "although"
+   ],
+   "forms": [
+    "のに"
+   ]
+  },
+  {
+   "id": "nagara",
+   "display": "〜ながら",
+   "level": "N4",
+   "meanings": [
+    "while",
+    "at the same time"
+   ],
+   "forms": [
+    "ながら"
+   ]
+  },
+  {
+   "id": "tame-ni",
+   "display": "〜ために",
+   "level": "N4",
+   "meanings": [
+    "in order to",
+    "for"
+   ],
+   "forms": [
+    "ために",
+    "ため"
+   ]
+  },
+  {
+   "id": "sugiru",
+   "display": "〜すぎる",
+   "level": "N4",
+   "meanings": [
+    "too much"
+   ],
+   "forms": [
+    "すぎる",
+    "すぎます"
+   ]
+  },
+  {
+   "id": "yasui",
+   "display": "〜やすい",
+   "level": "N4",
+   "meanings": [
+    "easy to"
+   ],
+   "forms": [
+    "やすい"
+   ]
+  },
+  {
+   "id": "nikui",
+   "display": "〜にくい",
+   "level": "N4",
+   "meanings": [
+    "hard to"
+   ],
+   "forms": [
+    "にくい"
+   ]
+  },
+  {
+   "id": "yotei",
+   "display": "〜予定です",
+   "level": "N4",
+   "meanings": [
+    "be scheduled to",
+    "plan"
+   ],
+   "forms": [
+    "予定です",
+    "予定"
+   ]
+  },
+  {
+   "id": "te-miru",
+   "display": "〜てみる",
+   "level": "N4",
+   "meanings": [
+    "try doing"
+   ],
+   "forms": [
+    "てみる",
+    "てみます",
+    "でみる"
+   ]
+  },
+  {
+   "id": "made-ni",
+   "display": "〜までに",
+   "level": "N4",
+   "meanings": [
+    "by",
+    "deadline"
+   ],
+   "forms": [
+    "までに"
+   ]
+  },
+  {
+   "id": "hazu",
+   "display": "〜はずです",
+   "level": "N4",
+   "meanings": [
+    "should",
+    "expected to"
+   ],
+   "forms": [
+    "はず",
+    "はずです"
+   ]
+  },
+  {
+   "id": "deshou-ka",
+   "display": "〜でしょうか",
+   "level": "N4",
+   "meanings": [
+    "polite question",
+    "I wonder"
+   ],
+   "forms": [
+    "でしょうか"
+   ]
+  },
+  {
+   "id": "tokoro",
+   "display": "〜ところです",
+   "level": "N4",
+   "meanings": [
+    "just about to",
+    "just did",
+    "in the middle of"
+   ],
+   "forms": [
+    "ところ",
+    "ところです",
+    "たところです"
+   ]
+  },
+  {
+   "id": "tari-tari",
+   "display": "〜たり〜たりする",
+   "level": "N4",
+   "meanings": [
+    "things like",
+    "doing such as"
+   ],
+   "forms": [
+    "たりする",
+    "たり"
+   ]
+  },
+  {
+   "id": "te-mo-yoroshii",
+   "display": "〜てもよろしいでしょうか",
+   "level": "N3",
+   "meanings": [
+    "may I (very polite)",
+    "polite permission"
+   ],
+   "forms": [
+    "てもよろしいでしょうか",
+    "てもよろしいですか",
+    "でもよろしいでしょうか"
+   ]
+  },
+  {
+   "id": "sasete-itadaku",
+   "display": "〜させていただきます",
+   "level": "N3",
+   "meanings": [
+    "humbly do",
+    "allow me to"
+   ],
+   "forms": [
+    "させていただく",
+    "させていただきます",
+    "せていただきます"
+   ]
+  },
+  {
+   "id": "you-ni-purpose",
+   "display": "〜ように (so that)",
+   "level": "N3",
+   "meanings": [
+    "so that",
+    "in order that"
+   ],
+   "forms": [
+    "ように"
+   ]
+  },
+  {
+   "id": "koto-ni-naru",
+   "display": "〜ことになる",
+   "level": "N3",
+   "meanings": [
+    "it has been decided",
+    "it will be"
+   ],
+   "forms": [
+    "ことになる",
+    "ことになりました",
+    "ことになります"
+   ]
+  },
+  {
+   "id": "koto-ni-suru",
+   "display": "〜ことにする",
+   "level": "N3",
+   "meanings": [
+    "decide to"
+   ],
+   "forms": [
+    "ことにする",
+    "ことにしました",
+    "ことにします"
+   ]
+  },
+  {
+   "id": "ni-tsuite",
+   "display": "〜について",
+   "level": "N3",
+   "meanings": [
+    "about",
+    "regarding"
+   ],
+   "forms": [
+    "について"
+   ]
+  },
+  {
+   "id": "ni-taishite",
+   "display": "〜に対して",
+   "level": "N3",
+   "meanings": [
+    "toward",
+    "against",
+    "in contrast to"
+   ],
+   "forms": [
+    "に対して"
+   ]
+  },
+  {
+   "id": "ni-yotte",
+   "display": "〜によって",
+   "level": "N3",
+   "meanings": [
+    "depending on",
+    "by means of"
+   ],
+   "forms": [
+    "によって",
+    "により"
+   ]
+  },
+  {
+   "id": "to-shite",
+   "display": "〜として",
+   "level": "N3",
+   "meanings": [
+    "as",
+    "in the role of"
+   ],
+   "forms": [
+    "として"
+   ]
+  },
+  {
+   "id": "wake-dewa-nai",
+   "display": "〜わけではない",
+   "level": "N3",
+   "meanings": [
+    "it does not mean that"
+   ],
+   "forms": [
+    "わけではない",
+    "わけではありません"
+   ]
+  },
+  {
+   "id": "okage-de",
+   "display": "〜おかげで",
+   "level": "N3",
+   "meanings": [
+    "thanks to"
+   ],
+   "forms": [
+    "おかげで"
+   ]
+  },
+  {
+   "id": "uchi-ni",
+   "display": "〜うちに",
+   "level": "N3",
+   "meanings": [
+    "while",
+    "before it changes"
+   ],
+   "forms": [
+    "うちに"
+   ]
+  }
+ ]
+}
