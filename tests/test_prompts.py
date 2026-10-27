@@ -51,6 +51,6 @@ def test_prompt_matches_snapshot(case_id: str) -> None:
 
 
 def test_prompt_versions_are_declared() -> None:
-    assert lessons.PROMPT_VERSION == "lessons-v1"
+    assert lessons.PROMPT_VERSION == "lessons-v2"
     assert roleplay.PROMPT_VERSION == "roleplay-v1"
     assert presentation.PROMPT_VERSION == "presentation-v1"

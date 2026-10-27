@@ -29,6 +29,7 @@ from ..core.japanese import contains_japanese, contains_kanji, is_japanese_name,
 from ..core.learner import JapaneseLevel, ProfileRecord
 from ..core.ports import DataClass
 from ..core.progress import ProgressRecord
+from ..core.priority import RankedTarget
 from ..core.verification import verify_questions
 from ..llm.gateway import LLMGateway
 from ..prompts import lessons as prompts
@@ -300,6 +301,7 @@ class LessonGenerator:
         profile: ProfileRecord,
         learning_history: Sequence[ProgressRecord] = (),
         recent_topic_ids: Sequence[str] = (),
+        selected_targets: Sequence[RankedTarget] = (),
     ) -> GeneratedLessonDraft:
         try:
             scenario_input = ScenarioInput(scenario=scenario, mode=mode)
@@ -309,10 +311,18 @@ class LessonGenerator:
             ) from error
 
         line_count = expected_line_count(profile)
+        targets = tuple(selected_targets) if scenario_input.mode is ScenarioMode.GENERATE else ()
         if self._parallel_explanations:
             package, provider_name = self._generate_split_content(
-                scenario_input, profile, learning_history, recent_topic_ids, line_count
+                scenario_input, profile, learning_history, recent_topic_ids, line_count,
+                targets,
             )
+            try:
+                package = self._gate_selected_targets(package, targets)
+            except ContractViolation as error:
+                raise GenerationError(
+                    "The generated lesson missed a selected word. Please retry."
+                ) from error
             return GeneratedLessonDraft(
                 package.lesson,
                 package.line_explanations,
@@ -325,15 +335,15 @@ class LessonGenerator:
             else GeneratedConversationResponse,
             prompts.content_system_prompt(scenario_input.mode, line_count),
             prompts.user_prompt(
-                scenario_input, profile, learning_history, recent_topic_ids
+                scenario_input, profile, learning_history, recent_topic_ids, targets
             ),
             "lesson_content",
             "We could not generate valid lesson content. Your scenario is still here; please retry.",
-            lambda response: self._gate_difficulty(
-                self._finalize_content(response, scenario_input, line_count, self._toolkit),
-                scenario_input,
-                profile,
-                learning_history,
+            lambda response: self._gate_selected_targets(
+                self._gate_difficulty(
+                    self._finalize_content(response, scenario_input, line_count, self._toolkit),
+                    scenario_input, profile, learning_history,
+                ), targets,
             ),
         )
         return GeneratedLessonDraft(
@@ -371,6 +381,7 @@ class LessonGenerator:
         learning_history: Sequence[ProgressRecord],
         recent_topic_ids: Sequence[str],
         line_count: int,
+        selected_targets: Sequence[RankedTarget],
     ) -> tuple[GeneratedLessonContentPackage, str]:
         """Fetch the dialogue first, then explain each line concurrently."""
 
@@ -379,7 +390,8 @@ class LessonGenerator:
             GeneratedExplainHeaderResponse if is_explain else GeneratedDialogueResponse,
             prompts.dialogue_system_prompt(scenario_input.mode, line_count),
             prompts.user_prompt(
-                scenario_input, profile, learning_history, recent_topic_ids
+                scenario_input, profile, learning_history, recent_topic_ids,
+                selected_targets,
             ),
             "lesson_dialogue",
             "We could not generate valid lesson content. Your scenario is still here; please retry.",
@@ -426,6 +438,24 @@ class LessonGenerator:
             learning_history,
         )
         return package, provider_name
+
+    def _gate_selected_targets(
+        self, package: GeneratedLessonContentPackage,
+        targets: Sequence[RankedTarget],
+    ) -> GeneratedLessonContentPackage:
+        """A requested word must occur in the dialogue and be a grounded lesson target."""
+        if not targets:
+            return package
+        spoken = "\n".join(line.split(":", 1)[-1] for line in package.lesson.passage.splitlines())
+        lemmas = {token.lemma for token in self._toolkit.tokenize(spoken) if token.is_content}
+        item_ids = {item.canonical_id for item in package.lesson.items}
+        missing = [target.expression for target in targets
+                   if self._toolkit.lemma(target.expression) not in lemmas
+                   or target.item_id not in item_ids]
+        if missing:
+            raise ContractViolation("Include and explain these selected words in the lesson: "
+                                    + ", ".join(missing))
+        return package
 
     def _explain_lines(
         self, texts: Sequence[str], level: JapaneseLevel

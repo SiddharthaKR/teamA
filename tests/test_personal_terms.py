@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 
 import pytest
 
@@ -7,6 +8,7 @@ from japanese_workplace_tutor.database import create_database_engine
 from japanese_workplace_tutor.language.sudachi_toolkit import SudachiToolkit
 from japanese_workplace_tutor.models import Base
 from japanese_workplace_tutor.personal_terms import PersonalTermService, TermValidationError
+from japanese_workplace_tutor.core.learner import JapaneseLevel, LevelSource, ProfileRecord
 from japanese_workplace_tutor.settings import Settings
 
 
@@ -77,4 +79,20 @@ def test_stale_preview_does_not_insert_duplicates(tmp_path: Path) -> None:
     assert terms.save(user.id, preview, public_confirmed=True) == 1
     assert terms.save(user.id, preview, public_confirmed=True) == 0
     assert len(terms.list_terms(user.id)) == 1
+    engine.dispose()
+
+
+def test_verified_personal_words_become_ranked_lesson_targets(tmp_path: Path) -> None:
+    auth, terms, engine = services(tmp_path / "terms.db")
+    user = auth.register("Alice", "correct horse battery staple")
+    terms.save(user.id, terms.preview(user.id, "S 仕様\nB 確認\n謎の語", kind="word"), public_confirmed=True)
+    profile = ProfileRecord(user.id, "Software engineer", (), None, JapaneseLevel.N3,
+                            None, LevelSource.SELF_REPORTED, 1.0, False)
+
+    ranked = terms.lesson_targets(user.id, profile, (), datetime(2026, 11, 1))
+
+    assert [row.expression for row in ranked] == ["仕様", "確認"]
+    terms.set_hidden(user.id, terms.list_terms(user.id)[0].id, True)
+    assert [row.expression for row in terms.lesson_targets(user.id, profile, (),
+                                                            datetime(2026, 11, 1))] == ["確認"]
     engine.dispose()

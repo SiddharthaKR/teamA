@@ -991,6 +991,12 @@
    "label": ""
   },
   {
+   "source": "profiles",
+   "target": "f_lessons",
+   "kind": "depends",
+   "label": ""
+  },
+  {
    "source": "db",
    "target": "settings",
    "kind": "depends",

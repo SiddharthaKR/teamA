@@ -3,6 +3,7 @@
 import re
 from collections.abc import Callable, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
+from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 
@@ -717,6 +718,7 @@ def render_learn(
     profile: ProfileRecord | None = None,
     generation_service: LessonGenerationService | None = None,
     review_service: ReviewService | None = None,
+    term_service: PersonalTermService | None = None,
 ) -> None:
     st.title("Learn")
     if service is None or user_id is None:
@@ -764,6 +766,14 @@ def render_learn(
         ) and generation_service is not None and profile is not None:
             try:
                 learning_history = service.get_progress(user_id)
+                selected_targets = (
+                    term_service.lesson_targets(
+                        user_id, profile, tuple(learning_history),
+                        datetime.now(timezone.utc).replace(tzinfo=None),
+                    )
+                    if term_service is not None and not scenario.strip()
+                    and ScenarioMode(selected_mode) is ScenarioMode.GENERATE else ()
+                )
                 generated = generation_service.generate_lesson_content(
                     scenario,
                     ScenarioMode(selected_mode),
@@ -773,6 +783,7 @@ def render_learn(
                         completion.topic_id
                         for completion in service.get_completions(user_id)[:10]
                     ),
+                    selected_targets=selected_targets,
                 )
             except GenerationError as error:
                 # Always-ship fallback: never dead-end the demo. If every model and
@@ -2020,7 +2031,8 @@ def main() -> None:
     if selected_page == "Home":
         render_home(profile, lesson_service, user_id)
     elif selected_page == "Learn":
-        render_learn(lesson_service, user_id, profile, generation_service, review_service)
+        render_learn(lesson_service, user_id, profile, generation_service,
+                     review_service, PersonalTermService(engine, toolkit))
     elif selected_page == "Presentation":
         render_presentation(generation_service, profile)
     elif selected_page == "Progress":

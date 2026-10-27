@@ -1,6 +1,7 @@
 """Preview and persist public, learner-chosen words and grammar points."""
 
 from dataclasses import dataclass
+from datetime import datetime
 import re
 import unicodedata
 
@@ -9,6 +10,13 @@ from sqlalchemy.orm import Session
 
 from .core.japanese import contains_japanese
 from .core.language import LanguageToolkit
+from .core.difficulty import LEARNER_RANK
+from .core.items import ItemCategory
+from .core.language import LEVEL_RANK
+from .core.learner import ProfileRecord
+from .core.priority import Candidate, RankedTarget, rank_targets
+from .core.progress import ProgressRecord
+from .features.lessons import canonical_item_id
 from .models import PersonalTerm
 
 _GRADE = re.compile(r"^([SAB])\s+(.+)$")
@@ -40,6 +48,34 @@ class PersonalTermService:
                 select(PersonalTerm).where(PersonalTerm.user_id == user_id)
                 .order_by(PersonalTerm.created_at, PersonalTerm.id)
             ).all())
+
+    def lesson_targets(
+        self, user_id: int, profile: ProfileRecord,
+        progress: tuple[ProgressRecord, ...], now: datetime,
+    ) -> tuple[RankedTarget, ...]:
+        """Select public, verified personal words suitable for the learner's level."""
+        by_id = {row.item_id: row for row in progress}
+        learner_rank = LEARNER_RANK[profile.estimated_working_level or profile.declared_level]
+        candidates = []
+        for term in self.list_terms(user_id):
+            if term.status != "active" or term.kind != "word" or term.reference_id is None:
+                continue
+            entry = self._toolkit.lookup(term.expression)
+            if entry is None:
+                continue
+            item_id = canonical_item_id(ItemCategory.VOCABULARY, term.expression,
+                                        self._toolkit)
+            history = by_id.get(item_id)
+            eligible = bool(entry.business_group) or (
+                entry.level is not None and LEVEL_RANK[entry.level] <= learner_rank
+            )
+            candidates.append(Candidate(
+                item_id, term.expression, 0.0, 0.0, 0.0, 0.5,
+                term.importance, history.mastery_score if history else 0.0,
+                eligible, bool(history and history.next_review_at and
+                               history.next_review_at <= now),
+            ))
+        return rank_targets(tuple(candidates), limit=2, due_limit=1)
 
     def preview(
         self, user_id: int, pasted: str, *, kind: str = "word", importance: str = "A"

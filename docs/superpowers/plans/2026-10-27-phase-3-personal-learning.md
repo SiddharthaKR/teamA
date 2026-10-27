@@ -10,7 +10,7 @@
 
 **Spec:** `docs/design/architecture-v2.md` (decisions 12–16), `docs/handoff/TASKS.md` (C1–C12), `docs/ux-review/README.md` (R1–R5). The team accuracy review is now a Phase 5 pre-pilot gate by user direction on 2026-10-28; initial packs still need review before use.
 
-**Implementation note (2026-10-28):** Azure OpenAI routing, milestone choice, shorter setup, personal term preview/storage, quiz concealment, and separate-day policy are implemented on `v3`. A deterministic word-priority function has focused tests, but it is not yet connected to lesson generation. Tasks 1–2 still need domain/partner preference and lesson-target integration checks. Tasks 3–9 and the three-profile exit gate remain open. No live Azure call or team review has run.
+**Implementation note (2026-10-28):** Azure OpenAI routing, milestone choice, shorter setup, personal term preview/storage, quiz concealment, and separate-day policy are implemented on `v3`. Verified personal words now feed deterministic priority and become required targets in surprise lesson generation; missing targets reject the generated lesson. Domain/partner preferences, reviewed packs, general-office fallback, due words outside the personal list, and the full three-role target check remain open. Tasks 3–9 and the three-profile exit gate remain open. No live Azure call or team review has run.
 
 ## Global Constraints
 
