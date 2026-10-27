@@ -1,6 +1,6 @@
 # Phase plan — for team review
 
-Status 2026-10-25. This is the plan for turning the hackathon app (3rd prize) into an internal NTT-AT tool. Please review the phases, the exit gates and the open questions below before Phase 3 starts. Details: `docs/design/architecture-v2.md` (design, decisions 1–16), `docs/handoff/TASKS.md` (task list), `docs/ux-review/README.md` (UX walkthrough).
+Status 2026-10-27. This is the plan for turning the hackathon app (3rd prize) into an internal NTT-AT tool. Please review the phases, the exit gates and the open questions below before Phase 3 starts. Details: `docs/design/architecture-v2.md` (design, decisions 1–16), `docs/handoff/TASKS.md` (task list), `docs/ux-review/README.md` (UX walkthrough), and `docs/superpowers/plans/2026-10-27-phase-3-personal-learning.md` (Phase 3 sequence, checks and exit evidence).
 
 ## How to review
 
@@ -24,7 +24,7 @@ flowchart LR
 | 0 Baseline | A safe starting point | Hackathon tagged `hackathon-final`; offline mock mode; 56-case golden test set | Tests pass offline | Done |
 | 1 Split the core | Code we can test and trust | Core rules separated from UI and AI; one AI gateway; versioned prompts | No feature imports an AI SDK | Done |
 | 2 Trust layer | Nothing graded comes unchecked from the AI | Dictionary-based readings and JLPT levels (tanos lists + 160-word Business Japanese list); code-checked answer keys; difficulty check; privacy checkbox; reviewer mode; progress page with milestones and progress over time | **Team accuracy review**: about two weeks of use, review sheet, error rate under a target the team sets | Built; UX fixes A1–A11 first, then the review |
-| 3 Personal learning | Lessons fit each person's job and goal | Personal word lists (paste lines, importance star); word priority by role and domain packs (hardware, software, AI, network, lab, quantum, sales, marketing, management…); learning path (situation map, grammar/word/kanji/keigo/reading tracks, a daily "Today" plan); milestone choice; typed answers and sentence reviews | Next-step picks make sense on real profiles of at least three roles | Planned |
+| 3 Personal learning | Lessons fit each person's job and goal | Personal word lists (paste lines, importance star); word priority by role and domain packs (hardware, software, AI, network, lab, quantum, sales, marketing, management…); learning path (situation map, grammar/word/kanji/keigo/reading tracks, a daily "Today" plan); milestone choice; typed answers and sentence reviews | Three real role profiles complete the Today-to-lesson loop with sensible, explained next steps and verified targets; offline suite and migrations pass; reviewer verdict recorded | Planned; [execution plan](../superpowers/plans/2026-10-27-phase-3-personal-learning.md) |
 | 4 Multi-user runtime | Run for many people on the on-prem server | FastAPI + PostgreSQL + job worker; per-user budgets; real login; daily reminder | Load test with 30 simulated users | Planned |
 | 5 Content bank and pilot | Prove it works | Placement test; milestone checks (reading, writing, presentation); listening via text-to-speech; eval suite in CI; pilot with 20–30 people from 2–3 teams | Pilot review: error flag rate, cost per lesson, retention | Planned |
 
