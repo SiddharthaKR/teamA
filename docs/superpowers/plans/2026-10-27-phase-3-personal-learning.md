@@ -8,11 +8,13 @@
 
 **Tech Stack:** Python, Streamlit, SQLAlchemy/SQLite with Alembic, Pydantic, existing language toolkit and LLM gateway, pytest.
 
-**Spec:** `docs/design/architecture-v2.md` (decisions 12–16), `docs/handoff/TASKS.md` (C1–C12), `docs/ux-review/README.md` (R1–R5). This plan resolves their open implementation choices; the team must still decide the Phase 2 accuracy threshold and review the initial packs.
+**Spec:** `docs/design/architecture-v2.md` (decisions 12–16), `docs/handoff/TASKS.md` (C1–C12), `docs/ux-review/README.md` (R1–R5). The team accuracy review is now a Phase 5 pre-pilot gate by user direction on 2026-10-28; initial packs still need review before use.
+
+**Implementation note (2026-10-28):** Azure OpenAI routing, milestone choice, shorter setup, personal term preview/storage, quiz concealment, and separate-day policy are implemented on `v3`. A deterministic word-priority function has focused tests, but it is not yet connected to lesson generation. Tasks 1–2 still need domain/partner preference and lesson-target integration checks. Tasks 3–9 and the three-profile exit gate remain open. No live Azure call or team review has run.
 
 ## Global Constraints
 
-- Phase 3 product work begins only after A1–A11 and the Phase 2 team accuracy gate in `docs/handoff/TASKS.md` are recorded as complete. Planning, fixtures, and offline tests may be prepared sooner.
+- Phase 3 product work may begin now. A1–A11, especially quiz concealment and separate-day mastery, must be fixed before their affected learning and progress slices are accepted. The human accuracy review is a Phase 5 pre-pilot gate.
 - `core/` has no UI, database, IO, or AI SDK imports. Prompt changes bump `PROMPT_VERSION` and snapshots. New modules and imports update the architecture graph.
 - Only code-verified keys affect mastery. Unmatched personal grammar and ambiguous typed answers are practice. New mastery policy versions replay all old graded evidence.
 - User-supplied terms sent to the model require the existing public-content confirmation. Persist parsed terms only. Do not persist learner prose or generated lesson sentences in `learning_items` or `review_attempts`.
@@ -34,19 +36,19 @@
 
 | Checkpoint | Tasks | Usable result |
 | --- | --- | --- |
-| Entry | Phase 2 gate | Accuracy evidence and reviewer decision recorded |
+| Entry | Current v3 baseline | Offline tests and a clean task baseline recorded |
 | Personal targets | 1–4 | Chosen milestone, personal list, reviewed packs and validated word targets |
 | Daily route | 5–6 | Returning learner starts a justified next lesson from Home |
 | Deeper practice | 7–9 | Typed recall, contextual reviews, remaining tracks and contrast drills |
 | Exit | Three-profile gate | Team signs off on complete daily loops |
 
-Tasks 1 and 2 may proceed together after the entry gate. Task 3 needs named pack reviewers. Task 4 consumes Tasks 1–3; Task 6 consumes Tasks 4–5. Tasks 7–9 can follow once the daily route works.
+Tasks 1 and 2 may proceed together. Task 3 needs named pack reviewers. Task 4 consumes Tasks 1–3; Task 6 consumes Tasks 4–5. Tasks 7–9 can follow once the daily route works.
 
-## Entry gate: finish and measure Phase 2
+## Baseline and learning integrity
 
-- [ ] Complete A1–A11, especially quiz concealment and separate-day mastery (`t05-v2`), with their specified tests and a live walkthrough.
-- [ ] Team names the error-rate threshold *before* scoring, records review-sheet sample size, item types, failures and corrections, and reviews the fixed reference sets and generated question types.
-- [ ] Record reviewer decision and evidence in `docs/handoff/PLAN.md`. If the threshold fails, fix and rerun a fresh review before Phase 3 product work. Do not mark Phase 2 done from automated tests alone.
+- [ ] Record an offline baseline. Fix A1 (quiz concealment) and A2 (separate-day mastery, `t05-v2`) before accepting Tasks 6–7; add their specified tests and a live walkthrough.
+- [ ] Complete A3–A11 alongside the relevant UI slices. Keep their acceptance checks in `docs/handoff/TASKS.md`.
+- [ ] In Phase 5, set the team accuracy threshold before scoring, record review evidence, and pass the threshold before pilot recruitment.
 
 ## Task 1: Milestone choice and short setup (C4, C6)
 
@@ -146,7 +148,7 @@ Tasks 1 and 2 may proceed together after the entry gate. Task 3 needs named pack
 
 ## Decisions to settle before their dependent slice
 
-- Name the Phase 2 error-rate target and reviewers before the review (entry gate).
+- Name the accuracy target and reviewers before the Phase 5 pre-pilot review.
 - Choose and review the first three role packs before Task 3; keep their provenance and version in the repository.
 - Confirm with IT whether a manually pasted Copilot word list is allowed before presenting that path in the UI; ordinary manual entry does not depend on it.
 - Decide whether public example sentences may be retained before extending C9 beyond curated, versioned examples. Session-only examples need no new retention decision.

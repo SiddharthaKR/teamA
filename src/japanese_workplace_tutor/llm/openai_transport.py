@@ -1,6 +1,7 @@
 """Adapter: OpenAI-compatible chat completions over HTTPS (strict JSON schema output)."""
 
 import json
+from urllib.parse import quote
 
 import requests
 
@@ -107,11 +108,8 @@ class OpenAICompatibleTransport:
         if model_id.lower().startswith("gpt-5"):
             request_payload["reasoning_effort"] = "low"
         response = self._session.post(
-            self._url,
-            headers={
-                "Authorization": f"Bearer {self._api_key}",
-                "Content-Type": "application/json",
-            },
+            self._endpoint_for(model_id),
+            headers=self._headers(),
             json=request_payload,
             timeout=timeout_seconds or self._timeout_seconds,
         )
@@ -121,3 +119,43 @@ class OpenAICompatibleTransport:
         if not isinstance(content, str) or not content.strip():
             raise ValueError("Model response content is missing.")
         return content
+
+    def _endpoint_for(self, model_id: str) -> str:
+        return self._url
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+
+
+class AzureOpenAITransport(OpenAICompatibleTransport):
+    """Azure v1 or deployment-based chat completions with API key auth."""
+
+    def __init__(
+        self, base_url: str, api_key: str, timeout_seconds: float = 180.0,
+        api_version: str | None = None,
+    ) -> None:
+        super().__init__(base_url, api_key, timeout_seconds)
+        self._base_url = base_url.rstrip("/")
+        self._api_version = api_version
+        if api_version is None and not self._base_url.endswith("/openai/v1"):
+            raise ValueError("Azure v1 endpoint must end in /openai/v1.")
+        if api_version is not None and self._base_url.endswith("/openai/v1"):
+            raise ValueError("Versioned Azure endpoint must use the resource root URL.")
+        if api_version is not None and not api_version.strip():
+            raise ValueError("Azure API version cannot be empty.")
+
+    def _endpoint_for(self, model_id: str) -> str:
+        if self._api_version is None:
+            return f"{self._base_url}/chat/completions"
+        deployment = quote(model_id, safe="")
+        version = quote(self._api_version, safe="")
+        return (
+            f"{self._base_url}/openai/deployments/{deployment}/"
+            f"chat/completions?api-version={version}"
+        )
+
+    def _headers(self) -> dict[str, str]:
+        return {"api-key": self._api_key, "Content-Type": "application/json"}

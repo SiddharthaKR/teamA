@@ -52,10 +52,33 @@ class LearnerProfile(Base):
     level_source: Mapped[str] = mapped_column(String(32), default="self-reported")
     level_confidence: Mapped[float] = mapped_column(Float(), default=1.0)
     romaji_preference: Mapped[bool] = mapped_column(Boolean(), default=False)
+    milestone_id: Mapped[str] = mapped_column(String(32), default="get-by", server_default="get-by")
     created_at: Mapped[datetime] = mapped_column(DateTime(), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(), server_default=func.now(), onupdate=func.now()
     )
+
+
+class PersonalTerm(Base):
+    __tablename__ = "personal_terms"
+    __table_args__ = (
+        UniqueConstraint("user_id", "kind", "expression", name="uq_personal_term"),
+        CheckConstraint("kind IN ('word', 'grammar')", name="ck_personal_term_kind"),
+        CheckConstraint("importance IN ('S', 'A', 'B')", name="ck_personal_term_importance"),
+        CheckConstraint("status IN ('active', 'hidden')", name="ck_personal_term_status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    expression: Mapped[str] = mapped_column(String(100))
+    reference_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    reading: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    meaning: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    importance: Mapped[str] = mapped_column(String(1), default="A")
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    source: Mapped[str] = mapped_column(String(16), default="pasted")
+    created_at: Mapped[datetime] = mapped_column(DateTime(), server_default=func.now())
 
 
 class LearningItem(Base):
@@ -122,6 +145,7 @@ class UserItemProgress(Base):
     sm2_interval_days: Mapped[int] = mapped_column(Integer(), default=0)
     sm2_ease: Mapped[float] = mapped_column(Float(), default=2.5)
     last_outcome: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    policy_version: Mapped[str] = mapped_column(String(32), default="t05-v2", server_default="t05-v2")
     last_answered_at: Mapped[datetime | None] = mapped_column(
         DateTime(), nullable=True
     )

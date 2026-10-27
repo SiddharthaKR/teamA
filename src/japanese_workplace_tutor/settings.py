@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///data/app.db"
     model_base_url: str | None = None
     model_api_key: SecretStr | None = None
+    model_provider: Literal["openai-compatible", "azure"] = "openai-compatible"
+    azure_api_version: str | None = None
     primary_model: str | None = None
     fallback_model: str | None = None
     # Per-phase routing for the strict-JSON quiz step. The primary model is strong at
@@ -50,7 +52,7 @@ class Settings(BaseSettings):
     def model_configured(self) -> bool:
         """Return whether every setting required for future model calls exists."""
 
-        return all(
+        credentials_ready = all(
             (
                 self.model_base_url,
                 self.model_api_key,
@@ -58,6 +60,13 @@ class Settings(BaseSettings):
                 self.fallback_model,
             )
         )
+        if not credentials_ready:
+            return False
+        if self.model_provider == "azure":
+            assert self.model_base_url is not None
+            is_v1_url = self.model_base_url.rstrip("/").endswith("/openai/v1")
+            return is_v1_url != bool(self.azure_api_version)
+        return True
 
     @property
     def generation_available(self) -> bool:

@@ -27,7 +27,8 @@ from .core.ports import ModelTransport
 from .llm.mock import MockTransport, RecordingTransport
 from .prompts import lessons as lesson_prompts, presentation as presentation_prompts, roleplay as roleplay_prompts
 from .review import REASONS, ReviewService, review_targets
-from .llm.openai_transport import OpenAICompatibleTransport
+from .llm.openai_transport import AzureOpenAITransport, OpenAICompatibleTransport
+from .personal_terms import PersonalTermService, TermValidationError
 from .lesson import (
     FixtureQuestion,
     ActiveLesson,
@@ -289,10 +290,16 @@ def _generation_service(
     quiz_fallback_model: str,
     llm_mode: str = "live",
     recording_path: str = "",
+    model_provider: str = "openai-compatible",
+    azure_api_version: str | None = None,
 ) -> LessonGenerationService:
-    transport: ModelTransport = OpenAICompatibleTransport(
-        base_url, _api_key, timeout_seconds
-    )
+    transport: ModelTransport
+    if model_provider == "azure":
+        transport = AzureOpenAITransport(
+            base_url, _api_key, timeout_seconds, azure_api_version
+        )
+    else:
+        transport = OpenAICompatibleTransport(base_url, _api_key, timeout_seconds)
     if llm_mode == "record":
         transport = RecordingTransport(transport, Path(recording_path))
     return LessonGenerationService(
@@ -491,6 +498,7 @@ def _clear_active_lesson() -> None:
             "active_lesson_draft",
             "lesson_answer_results",
             "lesson_retry_results",
+            "quiz_visible",
             "lesson_fallback_notice",
             "quiz_generation_future",
             "quiz_generation_error",
@@ -644,6 +652,65 @@ def render_roleplay(
         st.rerun()
 
 
+def _render_lesson_study(lesson, line_explanations) -> None:
+    target_expressions = {item.expression for item in lesson.items}
+    points_by_line = {
+        line.japanese_text: _line_points(line) for line in line_explanations
+    }
+    furigana_column, english_column = st.columns(2)
+    show_furigana = furigana_column.toggle("Furigana", value=True, key="show_furigana")
+    show_english = english_column.toggle("Show English", value=False, key="show_english")
+
+    conversation_tab, breakdown_tab, glossary_tab = st.tabs(
+        ("Conversation", "Line breakdown", "Glossary")
+    )
+    with conversation_tab:
+        for number, dialogue_line in enumerate(
+            (line for line in lesson.passage.splitlines() if line.strip()), start=1
+        ):
+            _render_japanese_line(
+                dialogue_line.strip(),
+                points_by_line.get(dialogue_line.strip(), ()),
+                show_furigana,
+            )
+            if show_english and number <= len(line_explanations):
+                st.caption(line_explanations[number - 1].english_meaning)
+
+    with breakdown_tab:
+        if not line_explanations:
+            st.caption("This lesson has no line-by-line explanation.")
+        for number, line in enumerate(line_explanations, start=1):
+            introduced = _line_points(line)
+            summary = ", ".join(point.expression for point in introduced) or "review"
+            with st.expander(f"Line {number} — {summary}"):
+                _render_japanese_line(line.japanese_text, introduced, show_furigana)
+                st.write(line.english_meaning)
+                for label, points in (
+                    ("Kanji", line.kanji),
+                    ("Vocabulary", line.vocabulary),
+                    ("Grammar", line.grammar),
+                ):
+                    for point in points:
+                        badge = " ⭐ practice target" if point.expression in target_expressions else ""
+                        st.markdown(
+                            f"**{label} · {point.expression}** ({point.reading}){badge}"
+                        )
+                        st.write(f"{point.meaning}. {point.explanation}")
+
+    with glossary_tab:
+        glossary = _glossary(line_explanations)
+        if not glossary:
+            st.caption("This lesson has no glossary entries.")
+        for label, point, line_numbers in glossary:
+            lines_text = ", ".join(str(number) for number in line_numbers)
+            badge = " ⭐" if point.expression in target_expressions else ""
+            st.markdown(
+                f"**{point.expression}**{badge} ({point.reading}) · {label} · "
+                f"line {lines_text}"
+            )
+            st.write(f"{point.meaning}. {point.explanation}")
+
+
 def render_learn(
     service: LessonService | None = None,
     user_id: int | None = None,
@@ -713,6 +780,7 @@ def render_learn(
                 # learner can still complete the full loop, with an honest notice.
                 _clear_active_lesson()
                 st.session_state.active_lesson = service.start_fixture_lesson(user_id)
+                st.session_state.quiz_visible = False
                 st.session_state.lesson_answer_results = {}
                 st.session_state.lesson_retry_results = {}
                 st.session_state.lesson_fallback_notice = (
@@ -745,6 +813,7 @@ def render_learn(
             st.session_state.active_lesson = service.start_fixture_lesson(
                 user_id
             )
+            st.session_state.quiz_visible = False
             st.session_state.lesson_answer_results = {}
             st.session_state.lesson_retry_results = {}
             st.rerun()
@@ -766,71 +835,17 @@ def render_learn(
     if provider_name is not None:
         st.caption(f"Lesson generated with {provider_name}")
 
-    target_expressions = {item.expression for item in lesson.items}
-    points_by_line = {
-        line.japanese_text: _line_points(line) for line in line_explanations
-    }
-    furigana_column, english_column = st.columns(2)
-    show_furigana = furigana_column.toggle("Furigana", value=True, key="show_furigana")
-    show_english = english_column.toggle(
-        "Show English", value=False, key="show_english"
+    quiz_visible = isinstance(active, ActiveLesson) and st.session_state.get(
+        "quiz_visible", True
     )
+    if not quiz_visible:
+        _render_lesson_study(lesson, line_explanations)
 
-    conversation_tab, breakdown_tab, glossary_tab = st.tabs(
-        ("Conversation", "Line breakdown", "Glossary")
-    )
-
-    with conversation_tab:
-        for number, dialogue_line in enumerate(
-            (line for line in lesson.passage.splitlines() if line.strip()), start=1
-        ):
-            _render_japanese_line(
-                dialogue_line.strip(),
-                points_by_line.get(dialogue_line.strip(), ()),
-                show_furigana,
-            )
-            if show_english and number <= len(line_explanations):
-                st.caption(line_explanations[number - 1].english_meaning)
-
-    with breakdown_tab:
-        if not line_explanations:
-            st.caption("This lesson has no line-by-line explanation.")
-        for number, line in enumerate(line_explanations, start=1):
-            introduced = _line_points(line)
-            summary = ", ".join(point.expression for point in introduced) or "review"
-            with st.expander(f"Line {number} — {summary}"):
-                _render_japanese_line(
-                    line.japanese_text, introduced, show_furigana
-                )
-                st.write(line.english_meaning)
-                for label, points in (
-                    ("Kanji", line.kanji),
-                    ("Vocabulary", line.vocabulary),
-                    ("Grammar", line.grammar),
-                ):
-                    for point in points:
-                        badge = (
-                            " ⭐ practice target"
-                            if point.expression in target_expressions
-                            else ""
-                        )
-                        st.markdown(
-                            f"**{label} · {point.expression}** ({point.reading}){badge}"
-                        )
-                        st.write(f"{point.meaning}. {point.explanation}")
-
-    with glossary_tab:
-        glossary = _glossary(line_explanations)
-        if not glossary:
-            st.caption("This lesson has no glossary entries.")
-        for label, point, line_numbers in glossary:
-            lines_text = ", ".join(str(number) for number in line_numbers)
-            badge = " ⭐" if point.expression in target_expressions else ""
-            st.markdown(
-                f"**{point.expression}**{badge} ({point.reading}) · {label} · "
-                f"line {lines_text}"
-            )
-            st.write(f"{point.meaning}. {point.explanation}")
+    if isinstance(active, ActiveLesson) and not quiz_visible:
+        if st.button("Quiz", type="primary", key="go_to_fixture_quiz"):
+            st.session_state.quiz_visible = True
+            st.rerun()
+        return
 
     if isinstance(draft, ActiveLessonDraft):
         future = st.session_state.get("quiz_generation_future")
@@ -865,6 +880,7 @@ def render_learn(
                         st.session_state.active_lesson = (
                             service.activate_generated_quiz(draft, generated_quiz)
                         )
+                        st.session_state.quiz_visible = True
                         st.session_state.pop("active_lesson_draft", None)
                         st.session_state.pop("quiz_generation_future", None)
                     st.rerun()
@@ -879,14 +895,9 @@ def render_learn(
     if active.quiz_provider_name is not None:
         st.caption(f"Quiz generated with {active.quiz_provider_name}")
     answer_results = st.session_state.setdefault("lesson_answer_results", {})
-    items_by_id = {item.canonical_id: item for item in lesson.items}
     for number, question in enumerate(lesson.questions, start=1):
         st.markdown(f"**{number}. {question.prompt}**")
         st.caption(_question_caption(question))
-        if question.form is QuestionForm.CONTEXTUAL_CLOZE:
-            source_item = items_by_id.get(question.item_id)
-            if source_item is not None:
-                st.caption(f"From the lesson: {source_item.example}")
         answer_key = f"lesson_answer_{active.lesson_session_id}_{question.question_id}"
         answered = question.question_id in answer_results
         selected_answer = st.radio(
@@ -1673,7 +1684,7 @@ def render_profile_editor(
     selected_role = st.selectbox(
         "Role or title",
         role_options,
-        index=role_options.index(profile.role) if profile is not None else 0,
+        index=role_options.index(profile.role) if profile is not None else None,
         accept_new_options=True,
         key=role_key,
         help="Search common roles or enter your own.",
@@ -1685,23 +1696,27 @@ def render_profile_editor(
         args=(role_key, tasks_key) if onboarding else None,
     )
 
-    suggested_tasks = list(ROLE_TASK_SUGGESTIONS.get(selected_role, ()))
-    selected_tasks = list(profile.tasks) if profile is not None else suggested_tasks
-    task_options = list(dict.fromkeys([*selected_tasks, *suggested_tasks]))
-    tasks = st.multiselect(
-        "Typical tasks",
-        task_options,
-        default=None if tasks_key in st.session_state else selected_tasks,
-        accept_new_options=True,
-        key=tasks_key,
-        help="Remove suggestions that do not fit, or enter edited and additional tasks.",
-    )
-    tools_domain = st.text_area(
-        "Technologies, tools, or business domain (optional)",
-        value=profile.tools_domain or "" if profile is not None else "",
-        max_chars=2000,
-        key=f"{prefix}_tools_domain",
-    )
+    if onboarding:
+        tasks = []
+        tools_domain = None
+    else:
+        suggested_tasks = list(ROLE_TASK_SUGGESTIONS.get(selected_role, ()))
+        selected_tasks = list(profile.tasks)
+        task_options = list(dict.fromkeys([*selected_tasks, *suggested_tasks]))
+        tasks = st.multiselect(
+            "Typical tasks",
+            task_options,
+            default=None if tasks_key in st.session_state else selected_tasks,
+            accept_new_options=True,
+            key=tasks_key,
+            help="Add the tasks you want lessons to cover.",
+        )
+        tools_domain = st.text_area(
+            "Technologies, tools, or business domain (optional)",
+            value=profile.tools_domain or "",
+            max_chars=2000,
+            key=f"{prefix}_tools_domain",
+        )
     level_values = [level.value for level in JapaneseLevel]
     declared_level = st.selectbox(
         "Self-reported Japanese level",
@@ -1713,6 +1728,19 @@ def render_profile_editor(
         ),
         key=f"{prefix}_declared_level",
     )
+    milestones = load_milestones()
+    milestone_names = [milestone.name for milestone in milestones]
+    selected_milestone = st.selectbox(
+        "Your goal",
+        milestone_names,
+        index=next(
+            (index for index, milestone in enumerate(milestones)
+             if profile is not None and milestone.id == profile.milestone_id),
+            0,
+        ),
+        key=f"{prefix}_milestone",
+    )
+    milestone_id = milestones[milestone_names.index(selected_milestone)].id
     romaji_preference = st.toggle(
         "Show romaji support",
         value=profile.romaji_preference if profile is not None else False,
@@ -1737,19 +1765,21 @@ def render_profile_editor(
             if onboarding:
                 service.create_profile(
                     user_id,
-                    role=selected_role,
+                    role=selected_role or "",
                     tasks=tasks,
                     tools_domain=tools_domain,
                     declared_level=declared_level,
+                    milestone_id=milestone_id,
                     romaji_preference=romaji_preference,
                 )
             else:
                 service.update_profile(
                     user_id,
-                    role=selected_role,
+                    role=selected_role or "",
                     tasks=tasks,
                     tools_domain=tools_domain,
                     declared_level=declared_level,
+                    milestone_id=milestone_id,
                     romaji_preference=romaji_preference,
                 )
         except ProfileValidationError as error:
@@ -1764,12 +1794,71 @@ def render_profile(
     service: ProfileService | None = None,
     user_id: int | None = None,
     profile: ProfileRecord | None = None,
+    term_service: PersonalTermService | None = None,
 ) -> None:
     if service is None or user_id is None:
         st.title("Profile")
         st.info("Sign in to view your learner profile.")
         return
     render_profile_editor(service, user_id, profile)
+    if profile is not None and term_service is not None:
+        render_personal_terms(term_service, user_id)
+
+
+def render_personal_terms(service: PersonalTermService, user_id: int) -> None:
+    st.divider()
+    st.subheader("Your words and grammar")
+    st.caption("Add public Japanese terms you want to practise. Readings come from the reference dictionary.")
+    kind = st.selectbox("Add", ("word", "grammar"), key="personal_terms_kind")
+    importance = st.selectbox("Importance", ("A", "S", "B"), key="personal_terms_importance")
+    pasted = st.text_area(
+        "One term per line, optionally followed by a comma and meaning",
+        key="personal_terms_paste",
+        max_chars=50000,
+    )
+    if st.button("Preview terms", key="preview_personal_terms"):
+        try:
+            preview = service.preview(user_id, pasted, kind=kind, importance=importance)
+        except TermValidationError as error:
+            st.error(str(error))
+        else:
+            st.session_state.personal_terms_preview = (pasted, kind, importance, preview)
+    current = st.session_state.get("personal_terms_preview")
+    if current is not None and current[:3] == (pasted, kind, importance):
+        preview = current[3]
+        st.dataframe(
+            [{"Term": row.expression, "Status": row.status,
+              "Reading": row.reading or "—", "Importance": row.importance}
+             for row in preview],
+            hide_index=True,
+        )
+        confirmed = st.checkbox(
+            "These terms are public and contain no client, project or internal names",
+            key="personal_terms_public",
+        )
+        if st.button("Save terms", key="save_personal_terms", disabled=not confirmed):
+            try:
+                count = service.save(user_id, preview, public_confirmed=confirmed)
+            except TermValidationError as error:
+                st.error(str(error))
+            else:
+                st.session_state.pop("personal_terms_preview", None)
+                st.success(f"Saved {count} term{'s' if count != 1 else ''}.")
+    terms = service.list_terms(user_id)
+    if terms:
+        choices = {f"{term.expression} ({term.kind}) · {term.id}": term for term in terms}
+        label = st.selectbox("Manage a term", list(choices), key="manage_personal_term")
+        term = choices[label]
+        grade = st.selectbox(
+            "Importance for this term", ("S", "A", "B"),
+            index=("S", "A", "B").index(term.importance), key="manage_term_importance",
+        )
+        hidden = st.checkbox("Hide from lesson targets", value=term.status == "hidden",
+                             key="manage_term_hidden")
+        if st.button("Update term", key="update_personal_term"):
+            service.set_importance(user_id, term.id, grade)
+            service.set_hidden(user_id, term.id, hidden)
+            st.rerun()
 
 
 PAGE_RENDERERS: dict[str, PageRenderer] = {
@@ -1854,6 +1943,10 @@ def clear_authenticated_session() -> None:
     st.session_state.pop("last_review_summary", None)
     st.session_state.pop("authenticated_user_id", None)
     st.session_state.pop("authenticated_username", None)
+    st.session_state.pop("personal_terms_preview", None)
+    for key in list(st.session_state):
+        if key.startswith(("personal_terms_", "manage_personal_term", "manage_term_")):
+            st.session_state.pop(key, None)
 
 
 def main() -> None:
@@ -1912,6 +2005,8 @@ def main() -> None:
                 settings.quiz_fallback_model or settings.primary_model,
                 settings.llm_mode,
                 settings.llm_recording_path,
+                settings.model_provider,
+                settings.azure_api_version,
             )
     profile = profile_service.get_profile(user_id)
     if profile is None:
@@ -1931,7 +2026,8 @@ def main() -> None:
     elif selected_page == "Progress":
         render_progress(lesson_service, user_id, toolkit)
     elif selected_page == "Profile":
-        render_profile(profile_service, user_id, profile)
+        render_profile(profile_service, user_id, profile,
+                       PersonalTermService(engine, toolkit))
     elif selected_page == "Accuracy" and review_service is not None:
         render_accuracy(review_service)
     else:

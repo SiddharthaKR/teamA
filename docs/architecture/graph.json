@@ -1,6 +1,6 @@
 {
  "name": "Japanese Workplace Tutor",
- "version": "2026-10-25 · v2 · after Phase 2 · archmap-1",
+ "version": "2026-10-28 · v3 · Phase 3 personal lists · archmap-1",
  "package": "japanese_workplace_tutor",
  "rows": [
   {
@@ -210,11 +210,13 @@
    "description": "Local demo accounts (Argon2id) and learner profiles. SSO can replace accounts behind an identity boundary later.",
    "modules": [
     "profile",
-    "auth"
+    "auth",
+    "personal_terms"
    ],
    "tools": [
     "ProfileService",
-    "AuthenticationService"
+    "AuthenticationService",
+    "PersonalTermService"
    ],
    "decisions": [],
    "wide": false,
@@ -618,7 +620,8 @@
     "core.errors",
     "core.japanese",
     "core.coverage",
-    "core.history"
+    "core.history",
+    "core.priority"
    ],
    "tools": [
     "SM2MasteryPolicy",
@@ -978,6 +981,12 @@
   {
    "source": "profiles",
    "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "profiles",
+   "target": "progress_view",
    "kind": "depends",
    "label": ""
   },
@@ -1409,6 +1418,12 @@
   }
  ],
  "changelog": [
+  {
+   "date": "2026-10-28",
+   "commit": "working",
+   "title": "Phase 3 starts: milestone choice, personal terms and Azure OpenAI routing",
+   "blocks": ["profiles", "progress_view", "ui", "llm"]
+  },
   {
    "date": "2026-10-25",
    "commit": "plan",

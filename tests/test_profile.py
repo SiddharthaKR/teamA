@@ -25,7 +25,7 @@ def create_services(database_path: Path):
     return AuthenticationService(engine), ProfileService(engine), engine
 
 
-def test_profile_requires_role_tasks_and_valid_level(tmp_path: Path) -> None:
+def test_profile_requires_role_and_valid_level(tmp_path: Path) -> None:
     auth, profiles, engine = create_services(tmp_path / "profiles.db")
     user = auth.register("Alice", "correct horse battery staple")
 
@@ -33,16 +33,23 @@ def test_profile_requires_role_tasks_and_valid_level(tmp_path: Path) -> None:
         profiles.create_profile(
             user.id, role="  ", tasks=["Meet customers"], declared_level="JLPT N5"
         )
-    with pytest.raises(ProfileValidationError, match="at least one typical task"):
-        profiles.create_profile(
-            user.id, role="Sales", tasks=["  "], declared_level="JLPT N5"
-        )
     with pytest.raises(ProfileValidationError, match="Input should be"):
         profiles.create_profile(
             user.id, role="Sales", tasks=["Meet customers"], declared_level="Expert"
         )
 
     assert profiles.get_profile(user.id) is None
+    engine.dispose()
+
+
+def test_short_setup_accepts_tasks_later(tmp_path: Path) -> None:
+    auth, profiles, engine = create_services(tmp_path / "short.db")
+    user = auth.register("Alice", "correct horse battery staple")
+    record = profiles.create_profile(
+        user.id, role="Sales", tasks=[], declared_level=JapaneseLevel.N5,
+        milestone_id="get-by",
+    )
+    assert record.tasks == ()
     engine.dispose()
 
 
@@ -116,4 +123,47 @@ def test_declared_level_update_preserves_estimated_level_state(tmp_path: Path) -
     assert updated.level_source is LevelSource.PLACEMENT_ESTIMATED
     assert updated.level_confidence == 0.6
     assert updated.romaji_preference is False
+    engine.dispose()
+
+
+def test_milestone_choice_persists_and_is_user_scoped(tmp_path: Path) -> None:
+    database_path = tmp_path / "milestones.db"
+    auth, profiles, engine = create_services(database_path)
+    alice = auth.register("Alice", "correct horse battery staple")
+    bob = auth.register("Bob", "another secure password")
+    profiles.create_profile(
+        alice.id, role="Researcher", tasks=["Present findings"],
+        declared_level=JapaneseLevel.N4, milestone_id="take-part",
+    )
+    profiles.create_profile(
+        bob.id, role="Sales", tasks=["Meet customers"],
+        declared_level=JapaneseLevel.N5, milestone_id="get-by",
+    )
+    engine.dispose()
+
+    _, restarted, engine = create_services(database_path)
+    assert restarted.get_profile(alice.id).milestone_id == "take-part"
+    assert restarted.get_profile(bob.id).milestone_id == "get-by"
+    changed = restarted.update_profile(
+        alice.id, role="Researcher", tasks=["Present findings"],
+        declared_level=JapaneseLevel.N4, milestone_id="contribute",
+    )
+    assert changed.milestone_id == "contribute"
+    unchanged_choice = restarted.update_profile(
+        alice.id, role="Researcher", tasks=["Present findings"],
+        declared_level=JapaneseLevel.N3,
+    )
+    assert unchanged_choice.milestone_id == "contribute"
+    assert restarted.get_profile(bob.id).milestone_id == "get-by"
+    engine.dispose()
+
+
+def test_unknown_milestone_is_rejected(tmp_path: Path) -> None:
+    auth, profiles, engine = create_services(tmp_path / "milestones.db")
+    user = auth.register("Alice", "correct horse battery staple")
+    with pytest.raises(ProfileValidationError, match="milestone"):
+        profiles.create_profile(
+            user.id, role="Researcher", tasks=["Present findings"],
+            declared_level=JapaneseLevel.N4, milestone_id="does-not-exist",
+        )
     engine.dispose()

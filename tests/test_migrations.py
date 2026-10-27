@@ -62,7 +62,7 @@ def assert_t05_schema(database_path: Path) -> None:
         ).fetchall()
         violations = connection.execute("PRAGMA foreign_key_check").fetchall()
 
-    assert revision == ("20261024_0009",)
+    assert revision == ("20261028_0012",)
     assert user_columns == {
         "id",
         "username",
@@ -82,6 +82,7 @@ def assert_t05_schema(database_path: Path) -> None:
         "level_source",
         "level_confidence",
         "romaji_preference",
+        "milestone_id",
         "created_at",
         "updated_at",
     }
@@ -112,6 +113,7 @@ def assert_t05_schema(database_path: Path) -> None:
         "last_outcome",
         "last_answered_at",
         "next_review_at",
+        "policy_version",
         "created_at",
         "updated_at",
     }
@@ -152,6 +154,12 @@ def assert_t05_schema(database_path: Path) -> None:
         ("users", "user_id", "id", "CASCADE"),
     }
     assert violations == []
+    with sqlite3.connect(database_path) as connection:
+        assert {row[1] for row in connection.execute("PRAGMA table_info(personal_terms)")} == {
+            "id", "user_id", "kind", "expression", "reference_id", "reading",
+            "meaning", "importance", "status", "source", "created_at",
+        }
+        assert connection.execute("PRAGMA foreign_key_list(personal_terms)").fetchone()[6] == "CASCADE"
 
 
 def test_clean_database_upgrades_to_t05_head(monkeypatch, tmp_path: Path) -> None:
@@ -173,6 +181,10 @@ def test_t04_database_upgrades_to_t05_head(monkeypatch, tmp_path: Path) -> None:
         connection.execute(
             "INSERT INTO users (username, normalized_username, password_hash) "
             "VALUES ('Alice', 'alice', 'test-hash')"
+        )
+        connection.execute(
+            "INSERT INTO learner_profiles (user_id, role, tasks, declared_level) "
+            "VALUES (1, 'Researcher', '[]', 'JLPT N4')"
         )
         connection.execute(
             "INSERT INTO learning_items "
@@ -214,7 +226,15 @@ def test_t04_database_upgrades_to_t05_head(monkeypatch, tmp_path: Path) -> None:
         attempt_backfill = connection.execute(
             "SELECT skill_dimension, outcome, policy_version FROM review_attempts"
         ).fetchone()
+        profile_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(learner_profiles)")
+        }
     assert progress_backfill == ("{}", 0, 0, 2.5, None)
+    assert "milestone_id" in profile_columns
+    with sqlite3.connect(database_path) as connection:
+        assert connection.execute(
+            "SELECT milestone_id FROM learner_profiles WHERE user_id = 1"
+        ).fetchone() == ("get-by",)
     assert attempt_backfill == (
         "grammar_application",
         "again",

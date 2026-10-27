@@ -216,11 +216,11 @@ def test_again_and_varied_retry_preserve_compact_hard_recovery(
             ("hard", True),
         ]
         assert attempts[0].question_form != attempts[1].question_form
-        assert all(row.policy_version == "t05-v1" for row in attempts)
+        assert all(row.policy_version == "t05-v2" for row in attempts)
     engine.dispose()
 
 
-def test_easy_requires_varied_success_across_separate_sessions(tmp_path: Path) -> None:
+def test_easy_requires_varied_success_across_separate_days(tmp_path: Path) -> None:
     auth, lessons, engine = create_services(tmp_path / "lesson.db")
     user = auth.register("Alice", "correct horse battery staple")
     question = FIXTURE_LESSON.questions[0]
@@ -234,6 +234,7 @@ def test_easy_requires_varied_success_across_separate_sessions(tmp_path: Path) -
 
     outcomes = []
     for session_number in range(2, 6):
+        lessons._clock = lambda day=session_number - 1: NOW + timedelta(days=day)
         active = lessons.start_fixture_lesson(
             user.id, f"{session_number:08d}-1111-1111-1111-111111111111"
         )
@@ -260,6 +261,34 @@ def test_easy_requires_varied_success_across_separate_sessions(tmp_path: Path) -
     assert set(progress.dimension_scores) == {"recognition", "contextual_use"}
     assert progress.sm2_interval_days == 73
     assert progress.sm2_ease == 2.55
+    engine.dispose()
+
+
+def test_legacy_progress_is_replayed_before_display(tmp_path: Path) -> None:
+    auth, lessons, engine = create_services(tmp_path / "legacy.db")
+    user = auth.register("Alice", "correct horse battery staple")
+    active = lessons.start_fixture_lesson(user.id)
+    question = FIXTURE_LESSON.questions[0]
+    lessons.submit_answer(user.id, active.lesson_session_id, question.question_id,
+                          question.correct_option_index)
+    with Session(engine) as session:
+        progress = session.scalar(select(UserItemProgress).where(
+            UserItemProgress.user_id == user.id,
+            UserItemProgress.item_id == question.item_id,
+        ))
+        progress.mastery_score = 1.0
+        progress.policy_version = "t05-v1"
+        session.commit()
+
+    refreshed = next(row for row in lessons.get_progress(user.id)
+                     if row.item_id == question.item_id)
+    assert refreshed.mastery_score < 0.8
+    with Session(engine) as session:
+        progress = session.scalar(select(UserItemProgress).where(
+            UserItemProgress.user_id == user.id,
+            UserItemProgress.item_id == question.item_id,
+        ))
+        assert progress.policy_version == "t05-v2"
     engine.dispose()
 
 

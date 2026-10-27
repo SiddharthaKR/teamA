@@ -27,7 +27,7 @@ Dependencies point inward toward a pure core; `lint-imports` (run by the test su
 
 | Package | Holds | May not import |
 |---|---|---|
-| `core/` | Domain types (items, questions, learner, inputs), Japanese script helpers, the progress policy `t05-v1` as pure functions with `replay()`, ports (`ModelTransport`, `DataClass`) | Anything with IO: Streamlit, SQLAlchemy, requests, or any outer package |
+| `core/` | Domain types (items, questions, learner, inputs), Japanese script helpers, the progress policy `t05-v2` as pure functions with `replay()`, ports (`ModelTransport`, `DataClass`) | Anything with IO: Streamlit, SQLAlchemy, requests, or any outer package |
 | `schemas/` | Pydantic contracts the model must satisfy | Features, the gateway, transports |
 | `prompts/` | Versioned prompt builders (`PROMPT_VERSION` per feature), pinned byte for byte by `tests/test_prompts.py` | Features, the gateway, transports |
 | `llm/` | `gateway.py`: the single path for model calls (routing, repair, fallback, hedging, PUBLIC/PRIVATE guard). `openai_transport.py`, `mock.py`: adapters | - |
@@ -113,7 +113,7 @@ It never displays setting values. If model settings are absent, all non-model pa
 
 - Home queries the signed-in learner's persisted schedules. When items are due, **Review due items** is the primary action and shows the total due count; **Start a lesson** remains available.
 - A review contains at most five items ordered by earliest due date, lowest mastery, then canonical ID. The deterministic question targets the weakest available evidence dimension.
-- Starting or skipping a review does not change progress. Only submitted multiple-choice answers update compact evidence, mastery, and SM-2 schedules through policy `t05-v1`.
+- Starting or skipping a review does not change progress. Only submitted graded answers update compact evidence, mastery, and SM-2 schedules through policy `t05-v2`.
 - Each submission is idempotent for the user, review session, and question. Immediate feedback shows the mapped outcome and new review date.
 - Completing a review returns Home, reports the result, shows the earliest remaining review schedule, and refreshes the due count. Review prompts and feedback remain session-only and are not stored in SQLite.
 
@@ -133,13 +133,13 @@ It never displays setting values. If model settings are absent, all non-model pa
 - Opening validated content records exposure once. Promoting its validated quiz does not record exposure again, and answers use the same application-owned scoring, corrective retry, mastery, SM-2, idempotency, and minimal completion-metadata path as the fixture lesson. Model output cannot set progress or schedules.
 - Generated passage, examples, prompts, options, explanations, feedback, recap, and scenario text remain in Streamlit session state only. Total provider failure preserves the scenario for retry and creates no exposure or progress rows.
 
-### Mastery policy `t05-v1`
+### Mastery policy `t05-v2`
 
 - Evidence dimensions are recognition, reading, contextual use, and grammar application. Full question text and feedback are never persisted.
 - `Again` is an incorrect answer: mastery changes by `-0.08` to a floor of `0`, ease drops by `0.20`, the interval resets to `0`, and review is due in 10 minutes.
 - `Hard` is a correct alternate-form retry after failure: mastery changes by `+0.08`, ease drops by `0.15`, and review is due in one day. The original `Again` row remains immutable.
 - `Good` is a first-try success: mastery changes by `+0.18`, ease rises by `0.05`, and intervals progress from 1 day to 3 days, then multiply by ease.
-- `Easy` changes mastery by `+0.30`, raises ease by `0.15`, and multiplies a minimum 4-day interval by ease and `1.3`. It requires at least two preceding consecutive first-try successes in separate sessions and successful evidence from at least two question forms.
+- `Easy` changes mastery by `+0.30`, raises ease by `0.15`, and multiplies a minimum 4-day interval by ease and `1.3`. It requires at least two preceding consecutive first-try successes on separate Japan calendar days and successful evidence from at least two question forms.
 - Mastery is `0.80`. Non-Easy evidence and evidence from only one form are capped at `0.79`, so one response, one session, or repeated same-form guesses cannot master an item.
 
 Golden vectors from an initial ease of `2.50`: `Again` gives mastery/ease/interval `0.00/2.30/0`; recovery `Hard` gives `0.08/2.15/1`. Two later `Good` sessions followed by two eligible `Easy` sessions produce mastery `0.08 → 0.26 → 0.44 → 0.74 → 1.00`, ease `2.15 → 2.20 → 2.25 → 2.40 → 2.55`, and intervals `1 → 3 → 7 → 22 → 73` days.
@@ -163,8 +163,10 @@ All settings use the `JLT_` environment prefix:
 | Variable | Required now | Purpose |
 |---|---:|---|
 | `JLT_DATABASE_URL` | No | SQLAlchemy URL; defaults to `sqlite:///data/app.db` |
-| `JLT_MODEL_BASE_URL` | For generation | OpenAI-compatible endpoint |
+| `JLT_MODEL_BASE_URL` | For generation | OpenAI-compatible base URL; for Azure v1, `https://<resource>.openai.azure.com/openai/v1` |
 | `JLT_MODEL_API_KEY` | For generation | Shared model credential |
+| `JLT_MODEL_PROVIDER` | No | `openai-compatible` (default) or `azure`; Azure sends the key in the `api-key` header |
+| `JLT_AZURE_API_VERSION` | Azure deployment route only | Leave unset for Azure v1; set a supported version when using the Azure resource root URL |
 | `JLT_PRIMARY_MODEL` | For generation | Primary Tsuzumi model ID |
 | `JLT_FALLBACK_MODEL` | For generation | Fallback GPT model ID |
 | `JLT_MODEL_TIMEOUT_SECONDS` | No | Per-attempt provider timeout; defaults to 180 seconds |
