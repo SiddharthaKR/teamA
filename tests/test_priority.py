@@ -1,4 +1,4 @@
-from japanese_workplace_tutor.core.priority import Candidate, rank_targets
+from japanese_workplace_tutor.core.priority import Candidate, rank_targets, suggest_personal_focus
 
 
 def item(name: str, *, domain: float = 0.0, mastery: float = 0.0,
@@ -33,3 +33,9 @@ def test_level_filter_and_ties_are_deterministic() -> None:
 def test_duplicate_candidates_are_selected_once() -> None:
     ranked = rank_targets((item("due", due=True), item("due", due=True), item("new")))
     assert [row.item_id for row in ranked] == ["due", "new"]
+
+
+def test_personal_focus_is_one_in_three_completed_surprise_lessons() -> None:
+    assert [suggest_personal_focus(count) for count in range(6)] == [
+        True, False, False, True, False, False,
+    ]

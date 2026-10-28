@@ -9,6 +9,9 @@ from japanese_workplace_tutor.language.sudachi_toolkit import SudachiToolkit
 from japanese_workplace_tutor.models import Base
 from japanese_workplace_tutor.personal_terms import PersonalTermService, TermValidationError
 from japanese_workplace_tutor.core.learner import JapaneseLevel, LevelSource, ProfileRecord
+from japanese_workplace_tutor.core.items import ItemCategory
+from japanese_workplace_tutor.core.progress import ProgressRecord
+from japanese_workplace_tutor.features.lessons import canonical_item_id
 from japanese_workplace_tutor.settings import Settings
 
 
@@ -91,8 +94,29 @@ def test_verified_personal_words_become_ranked_lesson_targets(tmp_path: Path) ->
 
     ranked = terms.lesson_targets(user.id, profile, (), datetime(2026, 11, 1))
 
-    assert [row.expression for row in ranked] == ["仕様", "確認"]
+    assert [row.expression for row in ranked] == ["仕様"]
     terms.set_hidden(user.id, terms.list_terms(user.id)[0].id, True)
     assert [row.expression for row in terms.lesson_targets(user.id, profile, (),
                                                             datetime(2026, 11, 1))] == ["確認"]
+    engine.dispose()
+
+
+def test_personal_words_rotate_and_mastered_words_wait_until_due(tmp_path: Path) -> None:
+    auth, terms, engine = services(tmp_path / "terms.db")
+    user = auth.register("Alice", "correct horse battery staple")
+    terms.save(user.id, terms.preview(user.id, "S 仕様\nA 確認", kind="word"),
+               public_confirmed=True)
+    profile = ProfileRecord(user.id, "Software engineer", (), None, JapaneseLevel.N3,
+                            None, LevelSource.SELF_REPORTED, 1.0, False)
+    item_id = canonical_item_id(ItemCategory.VOCABULARY, "仕様", terms._toolkit)
+    record = ProgressRecord(item_id, ItemCategory.VOCABULARY, 1, 0, 0, 0.0, {}, 0,
+                            0, 2.5, None, None, None)
+
+    assert terms.lesson_targets(user.id, profile, (record,), datetime(2026, 11, 1))[0].expression == "確認"
+
+    from dataclasses import replace
+    mastered = replace(record, mastery_score=1.0)
+    assert terms.lesson_targets(user.id, profile, (mastered,), datetime(2026, 11, 1))[0].expression == "確認"
+    due = replace(mastered, next_review_at=datetime(2026, 10, 31))
+    assert terms.lesson_targets(user.id, profile, (due,), datetime(2026, 11, 1))[0].expression == "仕様"
     engine.dispose()

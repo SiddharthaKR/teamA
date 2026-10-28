@@ -25,6 +25,7 @@ from .generation import (
     evaluate_graduation,
 )
 from .core.ports import ModelTransport
+from .core.priority import suggest_personal_focus
 from .llm.mock import MockTransport, RecordingTransport
 from .prompts import lessons as lesson_prompts, presentation as presentation_prompts, roleplay as roleplay_prompts
 from .review import REASONS, ReviewService, review_targets
@@ -753,6 +754,14 @@ def render_learn(
             horizontal=True,
         )
         st.caption(f"Detected/default mode: {detected_mode.value}. Confirm or change it above.")
+        completions = service.get_completions(user_id)
+        include_personal = (
+            st.checkbox(
+                "Focus this surprise lesson on one of my saved words",
+                value=suggest_personal_focus(len(completions)),
+                key=f"personal_focus_{len(completions)}",
+            ) if term_service is not None else False
+        )
         generation_disabled = generation_service is None or profile is None
         if generation_disabled:
             st.info("Scenario generation is unavailable until model configuration is complete.")
@@ -771,7 +780,7 @@ def render_learn(
                         user_id, profile, tuple(learning_history),
                         datetime.now(timezone.utc).replace(tzinfo=None),
                     )
-                    if term_service is not None and not scenario.strip()
+                    if term_service is not None and include_personal and not scenario.strip()
                     and ScenarioMode(selected_mode) is ScenarioMode.GENERATE else ()
                 )
                 generated = generation_service.generate_lesson_content(
@@ -781,7 +790,7 @@ def render_learn(
                     learning_history=learning_history,
                     recent_topic_ids=tuple(
                         completion.topic_id
-                        for completion in service.get_completions(user_id)[:10]
+                        for completion in completions[:10]
                     ),
                     selected_targets=selected_targets,
                 )
@@ -1956,7 +1965,8 @@ def clear_authenticated_session() -> None:
     st.session_state.pop("authenticated_username", None)
     st.session_state.pop("personal_terms_preview", None)
     for key in list(st.session_state):
-        if key.startswith(("personal_terms_", "manage_personal_term", "manage_term_")):
+        if key.startswith(("personal_terms_", "manage_personal_term", "manage_term_",
+                           "personal_focus_")):
             st.session_state.pop(key, None)
 
 

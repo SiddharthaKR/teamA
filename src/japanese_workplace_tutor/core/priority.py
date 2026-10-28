@@ -25,6 +25,11 @@ class RankedTarget:
     reason: str
 
 
+def suggest_personal_focus(completed_lessons: int) -> bool:
+    """Default personal focus on at most one in three completed lessons."""
+    return completed_lessons % 3 == 0
+
+
 def rank_targets(
     candidates: tuple[Candidate, ...], *, limit: int = 7, due_limit: int = 2
 ) -> tuple[RankedTarget, ...]:

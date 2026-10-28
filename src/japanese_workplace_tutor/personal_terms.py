@@ -69,13 +69,26 @@ class PersonalTermService:
             eligible = bool(entry.business_group) or (
                 entry.level is not None and LEVEL_RANK[entry.level] <= learner_rank
             )
+            due = bool(history and history.next_review_at and
+                       history.next_review_at <= now)
+            if history and history.mastery_score >= 0.8 and not due:
+                continue
             candidates.append(Candidate(
                 item_id, term.expression, 0.0, 0.0, 0.0, 0.5,
                 term.importance, history.mastery_score if history else 0.0,
-                eligible, bool(history and history.next_review_at and
-                               history.next_review_at <= now),
+                eligible, due,
             ))
-        return rank_targets(tuple(candidates), limit=2, due_limit=1)
+        ranked = rank_targets(tuple(candidates), limit=len(candidates), due_limit=1)
+        if not ranked:
+            return ()
+        if ranked[0].item_id in {row.item_id for row in candidates if row.due}:
+            return ranked[:1]
+        # Least exposed wins; the need score resolves ties among equally used words.
+        position = {row.item_id: index for index, row in enumerate(ranked)}
+        return (min(ranked, key=lambda row: (
+            by_id[row.item_id].exposure_count if row.item_id in by_id else 0,
+            position[row.item_id],
+        )),)
 
     def preview(
         self, user_id: int, pasted: str, *, kind: str = "word", importance: str = "A"
