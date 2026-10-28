@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///data/app.db"
     model_base_url: str | None = None
     model_api_key: SecretStr | None = None
+    apim_subscription_key: SecretStr | None = None
+    apim_subscription_key_header: str = "Ocp-Apim-Subscription-Key"
     model_provider: Literal["openai-compatible", "azure"] = "openai-compatible"
     azure_api_version: str | None = None
     primary_model: str | None = None
@@ -48,17 +50,24 @@ class Settings(BaseSettings):
     # content and an Accuracy page. For reviewers only; snapshots keep reviewed text.
     reviewer_mode: bool = False
 
+    @field_validator("apim_subscription_key_header")
+    @classmethod
+    def validate_apim_header(cls, value: str) -> str:
+        import re
+        value = value.strip()
+        if not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+", value):
+            raise ValueError("APIM subscription key header must be a valid HTTP header name.")
+        return value
+
     @property
     def model_configured(self) -> bool:
         """Return whether every setting required for future model calls exists."""
 
-        credentials_ready = all(
-            (
-                self.model_base_url,
-                self.model_api_key,
-                self.primary_model,
-                self.fallback_model,
-            )
+        credentials_ready = bool(
+            self.model_base_url
+            and (self.model_api_key or self.apim_subscription_key)
+            and self.primary_model
+            and self.fallback_model
         )
         if not credentials_ready:
             return False

@@ -135,11 +135,15 @@ class AzureOpenAITransport(OpenAICompatibleTransport):
 
     def __init__(
         self, base_url: str, api_key: str, timeout_seconds: float = 180.0,
-        api_version: str | None = None,
+        api_version: str | None = None, *,
+        apim_subscription_key: str | None = None,
+        apim_subscription_key_header: str = "Ocp-Apim-Subscription-Key",
     ) -> None:
         super().__init__(base_url, api_key, timeout_seconds)
         self._base_url = base_url.rstrip("/")
         self._api_version = api_version
+        self._apim_subscription_key = apim_subscription_key
+        self._apim_subscription_key_header = apim_subscription_key_header
         if api_version is None and not self._base_url.endswith("/openai/v1"):
             raise ValueError("Azure v1 endpoint must end in /openai/v1.")
         if api_version is not None and self._base_url.endswith("/openai/v1"):
@@ -158,4 +162,7 @@ class AzureOpenAITransport(OpenAICompatibleTransport):
         )
 
     def _headers(self) -> dict[str, str]:
-        return {"api-key": self._api_key, "Content-Type": "application/json"}
+        headers = {"api-key": self._api_key, "Content-Type": "application/json"}
+        if self._apim_subscription_key:
+            headers[self._apim_subscription_key_header] = self._apim_subscription_key
+        return headers

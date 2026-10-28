@@ -36,6 +36,22 @@ def test_azure_v1_request_uses_model_deployment_name() -> None:
     assert kwargs["headers"]["api-key"] == "test-key"
 
 
+def test_azure_v1_can_send_apim_key_in_configured_header() -> None:
+    transport = AzureOpenAITransport(
+        "https://gateway.azure-api.net/ai/openai/v1", "backend-key",
+        apim_subscription_key="gateway-key",
+        apim_subscription_key_header="Authorization",
+    )
+    response = Mock()
+    response.json.return_value = {"choices": [{"message": {"content": '{"ok": true}'}}]}
+    transport._session.post = Mock(return_value=response)
+
+    transport.generate("lesson-deployment", "system", "user")
+    _, kwargs = transport._session.post.call_args
+    assert kwargs["headers"]["api-key"] == "backend-key"
+    assert kwargs["headers"]["Authorization"] == "gateway-key"
+
+
 def test_azure_configuration_requires_route_and_key(monkeypatch) -> None:
     for name in ("JLT_MODEL_BASE_URL", "JLT_MODEL_API_KEY", "JLT_PRIMARY_MODEL", "JLT_FALLBACK_MODEL"):
         monkeypatch.delenv(name, raising=False)

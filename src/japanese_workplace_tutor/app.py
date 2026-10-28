@@ -298,11 +298,15 @@ def _generation_service(
     recording_path: str = "",
     model_provider: str = "openai-compatible",
     azure_api_version: str | None = None,
+    _apim_subscription_key: str | None = None,
+    apim_subscription_key_header: str = "Ocp-Apim-Subscription-Key",
 ) -> LessonGenerationService:
     transport: ModelTransport
     if model_provider == "azure":
         transport = AzureOpenAITransport(
-            base_url, _api_key, timeout_seconds, azure_api_version
+            base_url, _api_key, timeout_seconds, azure_api_version,
+            apim_subscription_key=_apim_subscription_key,
+            apim_subscription_key_header=apim_subscription_key_header,
         )
     else:
         transport = OpenAICompatibleTransport(base_url, _api_key, timeout_seconds)
@@ -2134,7 +2138,7 @@ def main() -> None:
     if settings.llm_mode == "mock":
         generation_service = _mock_generation_service(settings.mock_fixture_dir)
     elif settings.model_configured:
-        api_key = settings.model_api_key
+        api_key = settings.model_api_key or settings.apim_subscription_key
         if (
             settings.model_base_url is not None
             and api_key is not None
@@ -2159,6 +2163,9 @@ def main() -> None:
                 settings.llm_recording_path,
                 settings.model_provider,
                 settings.azure_api_version,
+                (settings.apim_subscription_key.get_secret_value()
+                 if settings.apim_subscription_key else None),
+                settings.apim_subscription_key_header,
             )
     profile = profile_service.get_profile(user_id)
     if profile is None:

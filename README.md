@@ -170,6 +170,8 @@ All settings use the `JLT_` environment prefix:
 | `JLT_DATABASE_URL` | No | SQLAlchemy URL; defaults to `sqlite:///data/app.db` |
 | `JLT_MODEL_BASE_URL` | For generation | OpenAI-compatible base URL; for Azure v1, `https://<resource>.openai.azure.com/openai/v1` |
 | `JLT_MODEL_API_KEY` | For generation | Shared model credential |
+| `JLT_APIM_SUBSCRIPTION_KEY` | When APIM requires a subscription | Gateway subscription key, stored separately from the Azure model credential |
+| `JLT_APIM_SUBSCRIPTION_KEY_HEADER` | No | APIM key header name; defaults to `Ocp-Apim-Subscription-Key`. Use the name in APIM's `WWW-Authenticate` challenge when customized |
 | `JLT_MODEL_PROVIDER` | No | `openai-compatible` (default) or `azure`; Azure sends the key in the `api-key` header |
 | `JLT_AZURE_API_VERSION` | Azure deployment route only | Leave unset for Azure v1; set a supported version when using the Azure resource root URL |
 | `JLT_PRIMARY_MODEL` | For generation | Primary Tsuzumi model ID |

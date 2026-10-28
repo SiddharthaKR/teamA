@@ -110,6 +110,7 @@ def test_dummy_model_configuration_changes_status_without_provider_call(monkeypa
     prepare_database(monkeypatch, tmp_path / "app.db")
     monkeypatch.setenv("JLT_MODEL_BASE_URL", "https://proxy.invalid/v1")
     monkeypatch.setenv("JLT_MODEL_API_KEY", "dummy-test-value")
+    monkeypatch.setenv("JLT_MODEL_PROVIDER", "openai-compatible")
     monkeypatch.setenv("JLT_PRIMARY_MODEL", "primary-test-model")
     monkeypatch.setenv("JLT_FALLBACK_MODEL", "fallback-test-model")
     get_settings.cache_clear()

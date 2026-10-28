@@ -22,3 +22,5 @@ Branch: `v3`. Phase 3 is in progress. The broad team accuracy review belongs to 
 ## Verification and configuration
 
 The full offline suite passed for the word and route slice (one existing skip), and `python scripts/archmap.py check` matched the code. No live Azure call has run. The ignored `.env` needs `JLT_MODEL_PROVIDER=azure`, Azure endpoint, key, and deployment names supplied locally; leave `JLT_AZURE_API_VERSION` unset for `/openai/v1`.
+
+APIM runtime finding (2026-10-28): the configured gateway responds with `WWW-Authenticate: AzureApiManagementKey ... name="Authorization",type="header"`. The value currently supplied as `JLT_MODEL_API_KEY` is rejected as an invalid APIM subscription key when sent in that header. The app now supports `JLT_APIM_SUBSCRIPTION_KEY` and configurable `JLT_APIM_SUBSCRIPTION_KEY_HEADER`; obtain a valid APIM subscription key and set the header to `Authorization`. Keep the upstream Azure model key in `JLT_MODEL_API_KEY` if APIM requires it.
