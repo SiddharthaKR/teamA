@@ -299,9 +299,10 @@
    "status": "built",
    "kind": "code",
    "phase": null,
-   "description": "Content first, then a quiz. Target items derived from explained points; keys verified; difficulty gated.",
+   "description": "Content first, then a quiz. Target items derived from explained points; optional local situation sets choose verified words before generation; keys verified; difficulty gated.",
    "modules": [
-    "features.lessons"
+    "features.lessons",
+    "situation_words"
    ],
    "tools": [
     "LessonGenerator.generate_lesson_content",
@@ -933,6 +934,12 @@
   {
    "source": "ui",
    "target": "facade",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "ui",
+   "target": "f_lessons",
    "kind": "depends",
    "label": ""
   },

@@ -31,6 +31,7 @@ from .prompts import lessons as lesson_prompts, presentation as presentation_pro
 from .review import REASONS, ReviewService, review_targets
 from .llm.openai_transport import AzureOpenAITransport, OpenAICompatibleTransport
 from .personal_terms import PersonalTermService, TermValidationError
+from .situation_words import SituationWordService
 from .lesson import (
     FixtureQuestion,
     ActiveLesson,
@@ -720,6 +721,7 @@ def render_learn(
     generation_service: LessonGenerationService | None = None,
     review_service: ReviewService | None = None,
     term_service: PersonalTermService | None = None,
+    situation_service: SituationWordService | None = None,
 ) -> None:
     st.title("Learn")
     if service is None or user_id is None:
@@ -775,14 +777,17 @@ def render_learn(
         ) and generation_service is not None and profile is not None:
             try:
                 learning_history = service.get_progress(user_id)
-                selected_targets = (
-                    term_service.lesson_targets(
-                        user_id, profile, tuple(learning_history),
-                        datetime.now(timezone.utc).replace(tzinfo=None),
-                    )
-                    if term_service is not None and include_personal and not scenario.strip()
-                    and ScenarioMode(selected_mode) is ScenarioMode.GENERATE else ()
-                )
+                now = datetime.now(timezone.utc).replace(tzinfo=None)
+                selected_targets = ()
+                if ScenarioMode(selected_mode) is ScenarioMode.GENERATE:
+                    if scenario.strip() and situation_service is not None:
+                        selected_targets = situation_service.lesson_targets(
+                            scenario, profile, tuple(learning_history), now
+                        )
+                    elif term_service is not None and include_personal:
+                        selected_targets = term_service.lesson_targets(
+                            user_id, profile, tuple(learning_history), now
+                        )
                 generated = generation_service.generate_lesson_content(
                     scenario,
                     ScenarioMode(selected_mode),
@@ -2042,7 +2047,8 @@ def main() -> None:
         render_home(profile, lesson_service, user_id)
     elif selected_page == "Learn":
         render_learn(lesson_service, user_id, profile, generation_service,
-                     review_service, PersonalTermService(engine, toolkit))
+                     review_service, PersonalTermService(engine, toolkit),
+                     SituationWordService(toolkit) if settings.llm_mode != "mock" else None)
     elif selected_page == "Presentation":
         render_presentation(generation_service, profile)
     elif selected_page == "Progress":

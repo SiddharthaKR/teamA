@@ -547,6 +547,26 @@ def test_selected_personal_target_is_in_prompt_and_validated_lesson() -> None:
     assert target.item_id in {item.canonical_id for item in draft.content.items}
 
 
+def test_situation_targets_share_the_existing_content_request() -> None:
+    from datetime import datetime
+    from japanese_workplace_tutor.situation_words import SituationWordService
+
+    scenario = "Clarify a requirement"
+    targets = SituationWordService(TOOLKIT).lesson_targets(
+        scenario, profile(), (), datetime(2026, 11, 1)
+    )
+    assert targets
+    transport = FakeTransport([json.dumps(conversation_payload())])
+    draft = generator(transport).generate_lesson_content(
+        scenario, ScenarioMode.GENERATE, profile(), selected_targets=targets
+    )
+    assert len(transport.calls) == 1
+    assert all(target.expression in transport.user_prompts[0] for target in targets)
+    assert {target.item_id for target in targets} <= {
+        item.canonical_id for item in draft.content.items
+    }
+
+
 def test_missing_selected_target_rejects_generated_lesson() -> None:
     from japanese_workplace_tutor.core.priority import RankedTarget
 

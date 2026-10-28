@@ -48,6 +48,7 @@ def rank_targets(
         reason = (
             "due for review" if candidate.due else
             "personal priority" if candidate.importance == "S" else
+            "matches your situation" if candidate.situation_match > 0 else
             "matches your work" if candidate.domain_match > 0 else
             "common workplace word"
         )
