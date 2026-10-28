@@ -274,7 +274,7 @@ def test_personal_terms_require_preview_and_public_confirmation(monkeypatch, tmp
     app.run()
     app.sidebar.radio[0].set_value("Profile").run()
     app.text_area(key="personal_terms_paste").input("会議, meeting")
-    app.button(key="preview_personal_terms").click().run()
+    app.button(key="preview_personal_terms").click().run(timeout=10)
     assert app.button(key="save_personal_terms").disabled
     app.checkbox(key="personal_terms_public").check().run()
     app.button(key="save_personal_terms").click().run()

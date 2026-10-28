@@ -1,5 +1,6 @@
 from datetime import datetime
 from dataclasses import replace
+import pytest
 
 from japanese_workplace_tutor.core.items import ItemCategory
 from japanese_workplace_tutor.core.learner import JapaneseLevel, LevelSource, ProfileRecord
@@ -51,3 +52,16 @@ def test_mastered_situation_word_waits_until_due() -> None:
     due = replace(mastered, next_review_at=datetime(2026, 10, 31))
     assert service.lesson_targets("meeting", profile(), (due,),
                                   datetime(2026, 11, 1))[0].item_id == item_id
+
+
+@pytest.mark.parametrize("scenario", [
+    "A meeting about the company party",
+    "Discuss weekend plans in a team meeting",
+    "Give a status update on the office party",
+    "Talk about a requirements document for a social event",
+])
+def test_mixed_social_scenarios_do_not_force_workplace_words(scenario: str) -> None:
+    service = SituationWordService(SudachiToolkit.shared())
+
+    assert service.lesson_targets(scenario, profile(), (),
+                                  datetime(2026, 11, 1)) == ()

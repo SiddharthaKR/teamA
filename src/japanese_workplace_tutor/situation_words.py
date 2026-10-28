@@ -4,6 +4,7 @@ from datetime import datetime
 from functools import lru_cache
 from importlib.resources import files
 import json
+import re
 
 from .core.difficulty import LEARNER_RANK
 from .core.items import ItemCategory
@@ -39,6 +40,10 @@ class SituationWordService:
 
     def match(self, scenario: str) -> str | None:
         text = scenario.casefold()
+        # A work-format keyword does not make a personal topic a work lesson.
+        if any(re.search(r"\b" + re.escape(topic) + r"\b", text)
+               for topic in ("party", "weekend", "social event")):
+            return None
         matches = [
             (len(trigger), -index, situation["id"])
             for index, situation in enumerate(self._situations)
