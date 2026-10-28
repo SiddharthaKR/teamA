@@ -1,4 +1,7 @@
-from japanese_workplace_tutor.core.priority import Candidate, rank_targets, suggest_personal_focus
+from japanese_workplace_tutor.core.priority import (
+    Candidate, RankedTarget, merge_blank_targets, rank_targets,
+    suggest_personal_focus,
+)
 
 
 def item(name: str, *, domain: float = 0.0, mastery: float = 0.0,
@@ -39,3 +42,10 @@ def test_personal_focus_is_one_in_three_completed_surprise_lessons() -> None:
     assert [suggest_personal_focus(count) for count in range(6)] == [
         True, False, False, True, False, False,
     ]
+
+
+def test_blank_lesson_keeps_one_personal_word_and_one_other_word() -> None:
+    personal = RankedTarget("p", "報告", 1.0, "personal priority")
+    due = RankedTarget("d", "仕様", 0.0, "due for review")
+    assert merge_blank_targets((personal,), (personal, due)) == (personal, due)
+    assert merge_blank_targets((), (due,)) == (due,)

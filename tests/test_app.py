@@ -663,6 +663,52 @@ def test_fixture_started_from_today_clears_the_pending_route(monkeypatch, tmp_pa
     get_settings.cache_clear()
 
 
+def test_today_grammar_practice_completes_in_mock_mode(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.session_state["today_route"] = "path:get-by:grammar"
+    app.sidebar.radio[0].set_value("Learn").run(timeout=10)
+
+    assert not app.exception
+    assert app.radio(key="today_grammar_answer")
+    app.radio(key="today_grammar_answer").set_value("〜てください").run(timeout=10)
+    app.button(key="submit_today_practice").click().run(timeout=10)
+
+    assert not app.exception
+    assert "today_route" not in app.session_state
+    assert any("Practice complete" in notice.value for notice in app.success)
+    get_settings.cache_clear()
+
+
+def test_home_offers_one_offline_practice_alternative(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.sidebar.radio[0].set_value("Home").run(timeout=10)
+
+    assert app.button(key="start_local_practice")
+    app.button(key="start_local_practice").click().run(timeout=10)
+    assert not app.exception
+    assert app.sidebar.radio[0].value == "Learn"
+    assert app.radio(key="today_grammar_answer")
+    get_settings.cache_clear()
+
+
+def test_today_sentence_order_requires_correct_sequence(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.session_state["today_route"] = "path:get-by:order"
+    app.sidebar.radio[0].set_value("Learn").run(timeout=10)
+
+    for slot, chunk in enumerate(("疲れ様", "お", "です")):
+        app.selectbox(key=f"today_chunk_{slot}").set_value(chunk).run(timeout=10)
+    app.button(key="submit_today_practice").click().run(timeout=10)
+    assert "today_route" in app.session_state
+
+    for slot, chunk in enumerate(("お", "疲れ様", "です")):
+        app.selectbox(key=f"today_chunk_{slot}").set_value(chunk).run(timeout=10)
+    app.button(key="submit_today_practice").click().run(timeout=10)
+    assert not app.exception
+    assert "today_route" not in app.session_state
+    get_settings.cache_clear()
+
+
 def test_start_today_routes_through_skippable_due_review(monkeypatch, tmp_path: Path) -> None:
     app = _signed_in_mock_app(monkeypatch, tmp_path)
     seed_due_item(tmp_path / "app.db", app.session_state["authenticated_user_id"])

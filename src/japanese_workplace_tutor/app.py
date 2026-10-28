@@ -25,14 +25,16 @@ from .generation import (
     evaluate_graduation,
 )
 from .core.ports import ModelTransport
-from .core.priority import suggest_personal_focus
+from .core.priority import merge_blank_targets, suggest_personal_focus
+from .core.learning_path import route_scenario_matches
 from .llm.mock import MockTransport, RecordingTransport
 from .prompts import lessons as lesson_prompts, presentation as presentation_prompts, roleplay as roleplay_prompts
 from .review import REASONS, ReviewService, review_targets
 from .llm.openai_transport import AzureOpenAITransport, OpenAICompatibleTransport
 from .personal_terms import PersonalTermService, TermValidationError
 from .situation_words import SituationWordService
-from .today import TodayService, tag_today_draft
+from .domain_words import DomainWordService
+from .today import TodayService, load_situation_steps, tag_today_draft
 from .lesson import (
     FixtureQuestion,
     ActiveLesson,
@@ -468,7 +470,7 @@ def render_home(
         if plan.next_step is not None:
             st.write(plan.next_step.title)
             st.caption(plan.reason)
-            st.caption(f"Situation routes tried: {plan.completed_steps} of {plan.total_steps}")
+            st.caption(f"Route steps completed: {plan.completed_steps} of {plan.total_steps}")
             if plan.review_count:
                 st.caption(f"First, review up to {plan.review_count} due items. You can skip them.")
             if st.button("Start today", type="primary", key="start_today"):
@@ -483,6 +485,14 @@ def render_home(
                 st.rerun()
         else:
             st.write(plan.reason)
+        if plan.local_alternative is not None and plan.local_alternative != plan.next_step:
+            st.caption(f"Practice offline: {plan.local_alternative.title}")
+            if st.button("Practice offline", key="start_local_practice"):
+                st.session_state.today_route = plan.local_alternative.topic_id
+                st.session_state.today_scenario = ""
+                st.session_state.lesson_scenario = ""
+                _continue_learning()
+                st.rerun()
 
     summary = st.session_state.get("last_review_summary")
     if isinstance(summary, dict):
@@ -742,6 +752,41 @@ def _render_lesson_study(lesson, line_explanations) -> None:
             st.write(f"{point.meaning}. {point.explanation}")
 
 
+def _render_today_practice(today_service: TodayService, step) -> None:
+    st.subheader(step.title)
+    if step.track == "grammar":
+        question = today_service.grammar_question(step)
+        if question is None:
+            st.warning("This grammar practice is not available yet.")
+            return
+        meaning, options = question
+        answer = st.radio(
+            f"Which Japanese form means '{meaning}'?", options,
+            index=None, key="today_grammar_answer",
+        )
+    else:
+        st.write("Put the chunks in order to build the workplace phrase.")
+        st.caption("Chunks: " + " / ".join(reversed(step.chunks)))
+        selections = tuple(st.selectbox(
+            f"Position {index + 1}", tuple(reversed(step.chunks)), index=None,
+            key=f"today_chunk_{index}",
+        ) for index in range(len(step.chunks)))
+        answer = (tuple(step.chunks.index(chunk) for chunk in selections)
+                  if all(chunk is not None for chunk in selections) else None)
+    if st.button("Check answer", key="submit_today_practice"):
+        if answer is None:
+            st.warning("Choose an answer first.")
+        elif today_service.submit_practice(
+            int(st.session_state.authenticated_user_id), step.topic_id, answer,
+        ):
+            st.session_state.pop("today_route", None)
+            st.session_state.pop("today_scenario", None)
+            st.session_state.today_practice_complete = True
+            st.rerun()
+        else:
+            st.error("Try another answer.")
+
+
 def render_learn(
     service: LessonService | None = None,
     user_id: int | None = None,
@@ -750,16 +795,29 @@ def render_learn(
     review_service: ReviewService | None = None,
     term_service: PersonalTermService | None = None,
     situation_service: SituationWordService | None = None,
+    domain_service: DomainWordService | None = None,
     llm_mode: str = "live",
+    today_service: TodayService | None = None,
 ) -> None:
     st.title("Learn")
     if service is None or user_id is None:
         st.info("Sign in to start a lesson.")
         return
 
-    if llm_mode == "mock" and st.session_state.get("today_route"):
+    if st.session_state.pop("today_practice_complete", False):
+        st.success("Practice complete. Your next Today step is ready on Home.")
+
+    route_id = st.session_state.get("today_route")
+    route_step = next((step for step in load_situation_steps()
+                       if step.topic_id == route_id), None)
+    if (route_step is not None and route_step.track in {"grammar", "sentence-order"}
+            and today_service is not None):
+        _render_today_practice(today_service, route_step)
+        return
+
+    if llm_mode == "mock" and route_id:
         st.info(
-            "Offline sample lessons do not complete a Today situation route. "
+            "Offline sample lessons do not complete a Today generated lesson route. "
             "Configure a model to advance this route."
         )
 
@@ -815,13 +873,28 @@ def render_learn(
                 now = datetime.now(timezone.utc).replace(tzinfo=None)
                 selected_targets = ()
                 if ScenarioMode(selected_mode) is ScenarioMode.GENERATE:
-                    if scenario.strip() and situation_service is not None:
+                    if (domain_service is not None and route_scenario_matches(
+                            route_step, st.session_state.get("today_scenario"), scenario)):
+                        selected_targets = domain_service.route_targets(
+                            route_step.words, profile, tuple(learning_history), now
+                        )
+                    elif scenario.strip() and situation_service is not None:
                         selected_targets = situation_service.lesson_targets(
                             scenario, profile, tuple(learning_history), now
                         )
-                    elif term_service is not None and include_personal:
-                        selected_targets = term_service.lesson_targets(
-                            user_id, profile, tuple(learning_history), now
+                    elif not scenario.strip():
+                        personal_targets = (
+                            term_service.lesson_targets(
+                                user_id, profile, tuple(learning_history), now
+                            ) if term_service is not None and include_personal else ()
+                        )
+                        domain_targets = (
+                            domain_service.lesson_targets(
+                                scenario, profile, tuple(learning_history), now
+                            ) if domain_service is not None else ()
+                        )
+                        selected_targets = merge_blank_targets(
+                            personal_targets, domain_targets
                         )
                 generated = generation_service.generate_lesson_content(
                     scenario,
@@ -836,8 +909,9 @@ def render_learn(
                 )
                 generated = tag_today_draft(
                     generated,
-                    (st.session_state.get("today_route")
-                     if ScenarioMode(selected_mode) is ScenarioMode.GENERATE else None),
+                    (route_id if ScenarioMode(selected_mode) is ScenarioMode.GENERATE
+                     and (route_step is None or route_step.track != "words"
+                          or selected_targets) else None),
                     st.session_state.get("today_scenario"),
                     scenario,
                     mock_mode=llm_mode == "mock",
@@ -2100,12 +2174,14 @@ def main() -> None:
     selected_page = st.sidebar.radio("Navigation", pages, key="navigation")
     if selected_page == "Home":
         render_home(profile, lesson_service, user_id,
-                    TodayService(profile_service, lesson_service))
+                    TodayService(profile_service, lesson_service, toolkit))
     elif selected_page == "Learn":
         render_learn(lesson_service, user_id, profile, generation_service,
                      review_service, PersonalTermService(engine, toolkit),
                      SituationWordService(toolkit) if settings.llm_mode != "mock" else None,
-                     settings.llm_mode)
+                     DomainWordService(toolkit) if settings.llm_mode != "mock" else None,
+                     settings.llm_mode,
+                     TodayService(profile_service, lesson_service, toolkit))
     elif selected_page == "Presentation":
         render_presentation(generation_service, profile)
     elif selected_page == "Progress":

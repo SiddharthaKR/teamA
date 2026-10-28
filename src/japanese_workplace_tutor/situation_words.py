@@ -18,7 +18,7 @@ from .features.lessons import canonical_item_id
 @lru_cache(maxsize=1)
 def _situation_data() -> dict:
     path = files("japanese_workplace_tutor.resources").joinpath(
-        "situation_words_v1.json"
+        "situation_words_v2.json"
     )
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -63,6 +63,17 @@ class SituationWordService:
             return ()
         learner_rank = LEARNER_RANK[profile.estimated_working_level or profile.declared_level]
         by_id = {row.item_id: row for row in progress}
+        context = scenario.casefold()
+        domain = f"{profile.role} {profile.tools_domain or ''}".casefold()
+        partner_words = {
+            expression for partner, expressions in situation.get("partner_words", {}).items()
+            if re.search(r"\b" + re.escape(partner) + r"\b", context)
+            for expression in expressions
+        }
+        domain_words = {
+            expression for key, expressions in situation.get("domain_words", {}).items()
+            if key in domain for expression in expressions
+        }
         candidates = []
         for position, expression in enumerate(situation["words"]):
             entry = self._toolkit.lookup(expression)
@@ -75,7 +86,8 @@ class SituationWordService:
                 continue
             eligible = bool(entry.level and LEVEL_RANK[entry.level] <= learner_rank + 1)
             candidates.append(Candidate(
-                item_id, expression, 0.0, 1.0, 0.0,
+                item_id, expression, float(expression in domain_words), 1.0,
+                float(expression in partner_words),
                 1.0 - position / len(situation["words"]), "A",
                 history.mastery_score if history else 0.0, eligible, due,
             ))

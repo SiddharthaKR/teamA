@@ -1,0 +1,13 @@
+{
+  "version": "situation-words-v2",
+  "source": "business-v1",
+  "status": "draft; human relevance review pending",
+  "situations": [
+    {"id": "status-update", "label": "Give a status update", "triggers": ["status update", "progress report", "report progress", "update my manager"], "words": ["報告", "進捗", "確認", "予定"], "partner_words": {"manager": ["報告", "進捗"], "coworker": ["確認"]}},
+    {"id": "meeting", "label": "Take part in a meeting", "triggers": ["meeting", "agenda", "discussion"], "words": ["会議", "議題", "資料", "確認"]},
+    {"id": "scheduling", "label": "Discuss a schedule", "triggers": ["schedule", "deadline", "reschedule", "due date"], "words": ["予定", "日程", "締め切り", "納期"]},
+    {"id": "requirements", "label": "Clarify a requirement", "triggers": ["requirement", "specification", "clarify a request"], "words": ["仕様", "確認", "課題"], "domain_words": {"software": ["仕様", "課題"]}},
+    {"id": "handover", "label": "Hand over work", "triggers": ["handover", "hand-off", "handoff"], "words": ["共有", "担当", "資料", "確認"]},
+    {"id": "customer-followup", "label": "Follow up with a customer", "triggers": ["follow up with a customer", "follow up with a client", "customer follow-up", "client follow-up"], "words": ["顧客", "連絡", "対応", "確認"]}
+  ]
+}

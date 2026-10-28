@@ -65,3 +65,33 @@ def test_mixed_social_scenarios_do_not_force_workplace_words(scenario: str) -> N
 
     assert service.lesson_targets(scenario, profile(), (),
                                   datetime(2026, 11, 1)) == ()
+
+
+def test_handover_and_customer_followup_have_reference_backed_sets() -> None:
+    service = SituationWordService(SudachiToolkit.shared())
+    assert service.match("Prepare a handover for my coworker") == "handover"
+    assert service.match("Follow up with a customer about a request") == "customer-followup"
+    assert service.lesson_targets("Prepare a handover for my coworker",
+                                  profile(), (), datetime(2026, 11, 1))
+    assert service.validate_references() == ()
+
+
+def test_known_work_situation_uses_partner_context_to_rank_its_words() -> None:
+    service = SituationWordService(SudachiToolkit.shared())
+    manager = service.lesson_targets("Give a status update to my manager",
+                                     profile(), (), datetime(2026, 11, 1))
+    coworker = service.lesson_targets("Give a status update to my coworker",
+                                      profile(), (), datetime(2026, 11, 1))
+    assert manager[0].expression == "報告"
+    assert coworker[0].expression == "確認"
+
+
+def test_known_requirement_situation_uses_role_domain_context() -> None:
+    service = SituationWordService(SudachiToolkit.shared())
+    generic = replace(profile(), role="Office worker")
+    software = profile()
+    scenario = "Clarify a requirement"
+    generic_words = service.lesson_targets(scenario, generic, (), datetime(2026, 11, 1))
+    software_words = service.lesson_targets(scenario, software, (), datetime(2026, 11, 1))
+    assert {row.expression for row in generic_words} == {"仕様", "確認"}
+    assert {row.expression for row in software_words} == {"仕様", "課題"}

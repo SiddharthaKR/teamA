@@ -447,11 +447,13 @@
    "ref": "U28",
    "label": "Word priority",
    "row": "features",
-   "status": "planned",
+   "status": "built",
    "kind": "code",
    "phase": "Phase 3",
-   "description": "Code picks each lesson's target words from a shared word bank by need score: 0.4 domain (best over the learner's domains) + 0.3 situation + 0.2 who they talk to + 0.1 frequency, times S/A/B grade, (1 - mastery) and a level filter. Computed per lesson, never stored per user. Broad packs: general office, engineering common, hardware, software, AI/ML, network, electronics lab, quantum, sales, marketing, management, other (nearest by similarity). AI-drafted pack words are kept only if in the dictionary; confirmed by a second source or half weight; one start-up review, then learner signals.",
-   "modules": [],
+   "description": "Local target ranking uses domain, recognized situation, named conversation partner, frequency, personal importance, mastery, due status, and level. Versioned draft packs cover general office, software, project management, and sales; membership awaits named relevance review. Blank lessons rotate pack words and can include a due reference word outside the personal list. Other domain packs, learner signals, and broader preference capture remain planned.",
+   "modules": [
+    "domain_words"
+   ],
    "tools": [
     "word bank",
     "need score",
@@ -1420,6 +1422,24 @@
    "label": "readings, levels"
   },
   {
+   "source": "f_priority",
+   "target": "core",
+   "kind": "depends",
+   "label": "rank and level filter"
+  },
+  {
+   "source": "f_priority",
+   "target": "f_lessons",
+   "kind": "depends",
+   "label": "canonical item IDs"
+  },
+  {
+   "source": "ui",
+   "target": "f_priority",
+   "kind": "depends",
+   "label": "word targets"
+  },
+  {
    "source": "learner",
    "target": "f_personal",
    "kind": "planned",
@@ -1451,6 +1471,12 @@
   }
  ],
  "changelog": [
+  {
+   "date": "2026-10-28",
+   "commit": "working",
+   "title": "Phase 3 draft domain targets and first word, grammar, and phrase-order routes",
+   "blocks": ["f_priority", "f_path", "progress_view", "core", "ui"]
+  },
   {
    "date": "2026-10-28",
    "commit": "working",

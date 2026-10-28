@@ -827,6 +827,22 @@ class LessonService:
     ) -> CompletionRecord:
         return self.complete_lesson(user_id, self._fixture_active(lesson_session_id))
 
+    def record_practice_completion(self, user_id: int, topic_id: str) -> None:
+        """Store a code-checked local route once, without changing mastery."""
+        with Session(self._engine) as session:
+            existing = session.scalar(select(CompletedLessonMetadata).where(
+                CompletedLessonMetadata.user_id == user_id,
+                CompletedLessonMetadata.topic_id == topic_id,
+            ))
+            if existing is not None:
+                return
+            session.add(CompletedLessonMetadata(
+                user_id=user_id, lesson_session_id=str(uuid4()),
+                topic_id=topic_id, difficulty="Curated practice",
+                studied_item_ids=[], completed_at=self._clock(),
+            ))
+            session.commit()
+
     def complete_lesson(
         self, user_id: int, active_lesson: ActiveLesson
     ) -> CompletionRecord:

@@ -548,17 +548,19 @@ def test_selected_personal_target_is_in_prompt_and_validated_lesson() -> None:
 
 
 def test_situation_targets_share_the_existing_content_request() -> None:
+    from dataclasses import replace
     from datetime import datetime
     from japanese_workplace_tutor.situation_words import SituationWordService
 
     scenario = "Clarify a requirement"
+    learner = replace(profile(), role="Office worker")
     targets = SituationWordService(TOOLKIT).lesson_targets(
-        scenario, profile(), (), datetime(2026, 11, 1)
+        scenario, learner, (), datetime(2026, 11, 1)
     )
     assert targets
     transport = FakeTransport([json.dumps(conversation_payload())])
     draft = generator(transport).generate_lesson_content(
-        scenario, ScenarioMode.GENERATE, profile(), selected_targets=targets
+        scenario, ScenarioMode.GENERATE, learner, selected_targets=targets
     )
     assert len(transport.calls) == 1
     assert all(target.expression in transport.user_prompts[0] for target in targets)

@@ -14,6 +14,8 @@
 
 **Today route slice (2026-10-28):** A draft three-step situation catalog per milestone, pure next-step selection, user-scoped Today service, and Home Start today navigation are implemented with TDD. Up to five due reviews precede the lesson and can be skipped. Completion of a real generated lesson with the exact suggested scenario advances the route; mock and fixture lessons do not. The broader Task 5 language tracks and Task 6 coverage, furthest-behind selection, and forecast are still open. The situation catalog awaits human relevance review.
 
+**Word and first-track slice (2026-10-28):** Draft versioned general office, software, project management, and sales packs now feed blank lessons; one due reference word outside the personal list can join, and personal focus retains one slot. The situation map adds handover and customer follow-up, with contextual partner/domain ranking on recognized work prompts. Each milestone now has one word lesson route and offline grammar and phrase-order checks. Local checks record route completion only after an exact code-owned answer and do not change mastery. Catalog membership and examples await a named relevance review; see `docs/reviews/PHASE3_WORD_SETS.md`. Wider role packs, learner-signal overlays, preferred partner capture, and the remainder of Tasks 5–9 stay open.
+
 ## Global Constraints
 
 - Phase 3 product work may begin now. A1–A11, especially quiz concealment and separate-day mastery, must be fixed before their affected learning and progress slices are accepted. The human accuracy review is a Phase 5 pre-pilot gate.

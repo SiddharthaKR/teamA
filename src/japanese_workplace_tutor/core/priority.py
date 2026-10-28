@@ -30,6 +30,21 @@ def suggest_personal_focus(completed_lessons: int) -> bool:
     return completed_lessons % 3 == 0
 
 
+def merge_blank_targets(
+    personal: tuple[RankedTarget, ...], domain: tuple[RankedTarget, ...],
+) -> tuple[RankedTarget, ...]:
+    """Keep personal focus while leaving room for a due or domain word."""
+    seen: set[str] = set()
+    result = []
+    for row in (*personal[:1], *domain):
+        if row.item_id not in seen:
+            result.append(row)
+            seen.add(row.item_id)
+        if len(result) == 2:
+            break
+    return tuple(result)
+
+
 def rank_targets(
     candidates: tuple[Candidate, ...], *, limit: int = 7, due_limit: int = 2
 ) -> tuple[RankedTarget, ...]:
