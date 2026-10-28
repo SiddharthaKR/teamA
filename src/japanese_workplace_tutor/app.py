@@ -32,6 +32,7 @@ from .review import REASONS, ReviewService, review_targets
 from .llm.openai_transport import AzureOpenAITransport, OpenAICompatibleTransport
 from .personal_terms import PersonalTermService, TermValidationError
 from .situation_words import SituationWordService
+from .today import TodayService, tag_today_draft
 from .lesson import (
     FixtureQuestion,
     ActiveLesson,
@@ -349,7 +350,7 @@ def _clear_active_review() -> None:
 
 def _continue_learning() -> None:
     _clear_active_review()
-    st.session_state.navigation = "Learn"
+    st.session_state.pending_navigation = "Learn"
 
 
 def _render_due_review(
@@ -422,11 +423,15 @@ def _render_due_review(
                 "next_review_at": service.get_next_review_at(user_id),
             }
             _clear_active_review()
+            if st.session_state.get("today_route"):
+                _continue_learning()
             st.rerun()
 
     st.button("Start a lesson", key="continue_learning", on_click=_continue_learning)
     if st.button("Skip review", key="skip_due_review"):
         _clear_active_review()
+        if st.session_state.get("today_route"):
+            _continue_learning()
         st.rerun()
 
 
@@ -434,6 +439,7 @@ def render_home(
     profile: ProfileRecord | None = None,
     service: LessonService | None = None,
     user_id: int | None = None,
+    today_service: TodayService | None = None,
 ) -> None:
     st.title("Home")
     username = st.session_state.get("authenticated_username")
@@ -455,6 +461,28 @@ def render_home(
         return
 
     _render_this_week(service, user_id)
+
+    plan = today_service.build_today_plan(user_id) if today_service else None
+    if plan is not None:
+        st.subheader("Today")
+        if plan.next_step is not None:
+            st.write(plan.next_step.title)
+            st.caption(plan.reason)
+            st.caption(f"Situation routes tried: {plan.completed_steps} of {plan.total_steps}")
+            if plan.review_count:
+                st.caption(f"First, review up to {plan.review_count} due items. You can skip them.")
+            if st.button("Start today", type="primary", key="start_today"):
+                st.session_state.today_route = plan.next_step.topic_id
+                st.session_state.today_scenario = plan.next_step.scenario
+                st.session_state.lesson_scenario = plan.next_step.scenario
+                if plan.review_count:
+                    st.session_state.active_due_review = service.start_due_review(user_id)
+                    st.session_state.due_review_results = {}
+                else:
+                    _continue_learning()
+                st.rerun()
+        else:
+            st.write(plan.reason)
 
     summary = st.session_state.get("last_review_summary")
     if isinstance(summary, dict):
@@ -722,11 +750,18 @@ def render_learn(
     review_service: ReviewService | None = None,
     term_service: PersonalTermService | None = None,
     situation_service: SituationWordService | None = None,
+    llm_mode: str = "live",
 ) -> None:
     st.title("Learn")
     if service is None or user_id is None:
         st.info("Sign in to start a lesson.")
         return
+
+    if llm_mode == "mock" and st.session_state.get("today_route"):
+        st.info(
+            "Offline sample lessons do not complete a Today situation route. "
+            "Configure a model to advance this route."
+        )
 
     if "last_lesson_completion" in st.session_state:
         st.success("Lesson completed. Your compact progress and review schedule were saved.")
@@ -799,11 +834,21 @@ def render_learn(
                     ),
                     selected_targets=selected_targets,
                 )
+                generated = tag_today_draft(
+                    generated,
+                    (st.session_state.get("today_route")
+                     if ScenarioMode(selected_mode) is ScenarioMode.GENERATE else None),
+                    st.session_state.get("today_scenario"),
+                    scenario,
+                    mock_mode=llm_mode == "mock",
+                )
             except GenerationError as error:
                 # Always-ship fallback: never dead-end the demo. If every model and
                 # repair attempt fails, load the ready-made fixture lesson so the
                 # learner can still complete the full loop, with an honest notice.
                 _clear_active_lesson()
+                st.session_state.pop("today_route", None)
+                st.session_state.pop("today_scenario", None)
                 st.session_state.active_lesson = service.start_fixture_lesson(user_id)
                 st.session_state.quiz_visible = False
                 st.session_state.lesson_answer_results = {}
@@ -815,6 +860,8 @@ def render_learn(
                 )
                 st.rerun()
             else:
+                st.session_state.pop("today_route", None)
+                st.session_state.pop("today_scenario", None)
                 _clear_active_lesson()
                 active_draft = service.start_generated_lesson_draft(
                     user_id, generated
@@ -835,6 +882,8 @@ def render_learn(
         st.caption("Opening the lesson records exposure only. It does not raise mastery.")
         if st.button("Start fixture lesson", key="start_fixture_lesson"):
             _clear_active_lesson()
+            st.session_state.pop("today_route", None)
+            st.session_state.pop("today_scenario", None)
             st.session_state.active_lesson = service.start_fixture_lesson(
                 user_id
             )
@@ -1969,6 +2018,9 @@ def clear_authenticated_session() -> None:
     st.session_state.pop("authenticated_user_id", None)
     st.session_state.pop("authenticated_username", None)
     st.session_state.pop("personal_terms_preview", None)
+    for key in ("today_route", "today_scenario", "lesson_scenario",
+                "pending_navigation"):
+        st.session_state.pop(key, None)
     for key in list(st.session_state):
         if key.startswith(("personal_terms_", "manage_personal_term", "manage_term_",
                            "personal_focus_")):
@@ -2042,13 +2094,18 @@ def main() -> None:
 
     review_service = ReviewService(engine) if settings.reviewer_mode else None
     pages = [*PAGE_RENDERERS.keys(), *(["Accuracy"] if review_service else [])]
+    pending_navigation = st.session_state.pop("pending_navigation", None)
+    if pending_navigation in pages:
+        st.session_state.navigation = pending_navigation
     selected_page = st.sidebar.radio("Navigation", pages, key="navigation")
     if selected_page == "Home":
-        render_home(profile, lesson_service, user_id)
+        render_home(profile, lesson_service, user_id,
+                    TodayService(profile_service, lesson_service))
     elif selected_page == "Learn":
         render_learn(lesson_service, user_id, profile, generation_service,
                      review_service, PersonalTermService(engine, toolkit),
-                     SituationWordService(toolkit) if settings.llm_mode != "mock" else None)
+                     SituationWordService(toolkit) if settings.llm_mode != "mock" else None,
+                     settings.llm_mode)
     elif selected_page == "Presentation":
         render_presentation(generation_service, profile)
     elif selected_page == "Progress":

@@ -111,6 +111,7 @@ It never displays setting values. If model settings are absent, all non-model pa
 
 ## Due-item review
 
+- Home also shows one draft situation route for the learner's chosen milestone. **Start today** opens up to five due reviews first (skippable), then pre-fills the suggested scenario on Learn. Completed generated lessons advance the route using a stored topic ID; repeating a step counts once. The route catalog currently has three situations per milestone and awaits human relevance review. Offline sample lessons do not advance this situation route.
 - Home queries the signed-in learner's persisted schedules. When items are due, **Review due items** is the primary action and shows the total due count; **Start a lesson** remains available.
 - A review contains at most five items ordered by earliest due date, lowest mastery, then canonical ID. The deterministic question targets the weakest available evidence dimension.
 - Starting or skipping a review does not change progress. Only submitted graded answers update compact evidence, mastery, and SM-2 schedules through policy `t05-v2`.

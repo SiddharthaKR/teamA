@@ -185,7 +185,8 @@
    "phase": null,
    "description": "Learner-facing progress: named items with status (new, learning, mastered, slipping), coverage of each JLPT, grammar and Business set, and word progress toward the three milestones (milestones_v1.json, target 80%). Over time (decision 15): items mastered per week, recall after a 12-hour gap per week, and each milestone's change over 4 weeks, all replayed from stored answers; nothing extra is stored.",
    "modules": [
-    "progress_view"
+    "progress_view",
+    "today"
    ],
    "tools": [
     "build_progress_view",
@@ -622,7 +623,8 @@
     "core.japanese",
     "core.coverage",
     "core.history",
-    "core.priority"
+    "core.priority",
+    "core.learning_path"
    ],
    "tools": [
     "SM2MasteryPolicy",
@@ -1350,6 +1352,24 @@
    "target": "core",
    "kind": "depends",
    "label": ""
+  },
+  {
+   "source": "progress_view",
+   "target": "profiles",
+   "kind": "depends",
+   "label": "Today profile"
+  },
+  {
+   "source": "progress_view",
+   "target": "records",
+   "kind": "depends",
+   "label": "completed lessons"
+  },
+  {
+   "source": "progress_view",
+   "target": "schemas",
+   "kind": "depends",
+   "label": "lesson draft"
   },
   {
    "source": "progress_view",

@@ -12,6 +12,8 @@
 
 **Implementation note (2026-10-28):** Azure OpenAI routing, milestone choice, shorter setup, personal term preview/storage, quiz concealment, and separate-day policy are implemented on `v3`. Verified personal words become required targets in optional focused surprise lessons; missing targets reject the generated lesson. Focus defaults on every third completed lesson, with one rotating word per focused lesson. A draft versioned situation map now selects up to two dictionary-backed targets for recognized English scenarios using the existing content request. Domain/partner preferences, named review of the situation map, broader role packs, general-office fallback, due words outside the personal list, and the full three-role target check remain open. Tasks 3–9 and the three-profile exit gate remain open. No live Azure call or team review has run. See `docs/handoff/PHASE3_CONTINUATION.md` for the resume point.
 
+**Today route slice (2026-10-28):** A draft three-step situation catalog per milestone, pure next-step selection, user-scoped Today service, and Home Start today navigation are implemented with TDD. Up to five due reviews precede the lesson and can be skipped. Completion of a real generated lesson with the exact suggested scenario advances the route; mock and fixture lessons do not. The broader Task 5 language tracks and Task 6 coverage, furthest-behind selection, and forecast are still open. The situation catalog awaits human relevance review.
+
 ## Global Constraints
 
 - Phase 3 product work may begin now. A1–A11, especially quiz concealment and separate-day mastery, must be fixed before their affected learning and progress slices are accepted. The human accuracy review is a Phase 5 pre-pilot gate.

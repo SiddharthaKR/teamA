@@ -636,6 +636,48 @@ def _signed_in_mock_app(monkeypatch, tmp_path: Path) -> AppTest:
     return app
 
 
+def test_start_today_opens_the_recommended_situation(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.sidebar.radio[0].set_value("Home").run(timeout=10)
+
+    assert any("Today" in heading.value for heading in app.subheader)
+    app.button(key="start_today").click().run(timeout=10)
+
+    assert not app.exception
+    assert app.sidebar.radio[0].value == "Learn"
+    assert app.text_area(key="lesson_scenario").value == "Greet a new coworker on your first day."
+    assert app.session_state["today_scenario"] == "Greet a new coworker on your first day."
+    assert any("Offline sample" in notice.value for notice in app.info)
+    get_settings.cache_clear()
+
+
+def test_fixture_started_from_today_clears_the_pending_route(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.sidebar.radio[0].set_value("Home").run(timeout=10)
+    app.button(key="start_today").click().run(timeout=10)
+    app.button(key="start_fixture_lesson").click().run(timeout=10)
+
+    assert not app.exception
+    assert "today_route" not in app.session_state
+    assert "today_scenario" not in app.session_state
+    get_settings.cache_clear()
+
+
+def test_start_today_routes_through_skippable_due_review(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    seed_due_item(tmp_path / "app.db", app.session_state["authenticated_user_id"])
+    app.sidebar.radio[0].set_value("Home").run(timeout=10)
+
+    app.button(key="start_today").click().run(timeout=10)
+    assert not app.exception
+    assert "active_due_review" in app.session_state
+    app.button(key="skip_due_review").click().run(timeout=10)
+
+    assert app.sidebar.radio[0].value == "Learn"
+    assert app.text_area(key="lesson_scenario").value == "Greet a new coworker on your first day."
+    get_settings.cache_clear()
+
+
 def test_typed_scenario_needs_public_content_confirmation(monkeypatch, tmp_path: Path) -> None:
     app = _signed_in_mock_app(monkeypatch, tmp_path)
     app.sidebar.radio[0].set_value("Learn").run()
