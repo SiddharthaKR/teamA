@@ -31,3 +31,4 @@ class ProfileRecord:
     level_source: LevelSource
     level_confidence: float
     romaji_preference: bool
+    milestone_id: str = "get-by"

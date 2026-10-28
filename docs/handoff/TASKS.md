@@ -19,9 +19,9 @@ Hand-off written 2026-10-25. Work continues on branch `v2`. Each task has a goal
 - **`core/` stays pure**: no IO, UI, database or SDK imports. `import-linter` contracts in `pyproject.toml` enforce the layers; `tests/test_architecture.py` runs them.
 - **Keep the system map in sync.** Every new module goes into a block in `docs/architecture/graph.json`, with `depends` wires for new cross-block imports and a `tech` entry for new third-party packages. Run `python scripts/archmap.py check`, then `python scripts/archmap.py build`; `tests/test_architecture_graph.py` fails on drift. Add a `changelog` entry.
 - **Prompts** are Python modules with `PROMPT_VERSION` and byte-for-byte snapshot tests (`tests/test_prompts.py`). Changing a prompt means bumping its version and updating the snapshot on purpose.
-- **Progress is replayed from evidence.** Answers in `review_attempts` are append-only; mastery comes from a versioned policy (`core/progress.py`, now `t05-v1`). A policy change gets a new version and must replay old evidence.
+- **Progress is replayed from evidence.** Answers in `review_attempts` are append-only; mastery comes from a versioned policy (`core/progress.py`, now `t05-v2`). A policy change gets a new version and must replay old evidence.
 - **Privacy (decision 2).** Only content the user confirms is public goes to OpenAI. Every prompt task is tagged `PUBLIC`/`PRIVATE`. Never commit `.env` (it holds a real key). Record mode is for public inputs only.
-- **Schema changes** go through Alembic (`alembic/versions/`, head `20261024_0009`) with a test in `tests/test_migrations.py`.
+- **Schema changes** go through Alembic (`alembic/versions/`, head `20261028_0012`) with a test in `tests/test_migrations.py`.
 - **Tests**: `JLT_MODEL_BASE_URL=http://127.0.0.1:9 python -m pytest` (323 tests, no network; the URL blocks accidental live calls). Run the app offline with `JLT_LLM_MODE=mock`; `JLT_REVIEWER_MODE=true` shows the accuracy tools.
 - Keep each file's existing line endings (some files are CRLF in git).
 
@@ -45,9 +45,9 @@ Why these matter (learning, 2026-10-25): memory fades roughly as R(t) = e^(−t/
 | A10 | Show times in Japan time and relative ("in 3 days"); "5 of 6 due" when the review is capped at 5 | `app.py` Home and review; reuse `core/history.LOCAL_OFFSET` | No UTC or past timestamps on learner screens |
 | A11 | Hide Translate from navigation until it exists | `app.py` `PAGE_RENDERERS` | — |
 
-## B. Phase 2 gate (people, not code)
+## B. Team accuracy review (Phase 5 pre-pilot gate)
 
-Add the OpenAI keys; Siddhartha and the team use the app for about two weeks with reviewer mode on, fill the review sheet (`scripts/export_review_sheet.py`, `scripts/score_review_sheet.py`) and set the error-rate target. Review once: `resources/business_vocab_v1.json`, `jlpt_overrides_v1.json`, `milestones_v1.json` and the code-built review questions. Phase 3 starts when the error rate meets the target.
+Configure the Azure OpenAI endpoint, deployment names, and API key in the ignored `.env`; Siddhartha and the team use the app for about two weeks with reviewer mode on, fill the review sheet (`scripts/export_review_sheet.py`, `scripts/score_review_sheet.py`) and set the error-rate target before scoring. Review once: `resources/business_vocab_v1.json`, `jlpt_overrides_v1.json`, `milestones_v1.json` and the code-built review questions. This review must pass before Phase 5 pilot recruitment. Phase 3 implementation can proceed using mock mode and offline tests.
 
 ## C. Phase 3: personal learning
 

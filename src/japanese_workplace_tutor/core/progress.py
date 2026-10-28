@@ -42,6 +42,7 @@ class PastAttempt:
     lesson_session_id: str
     question_form: str
     is_correct: bool
+    answered_at: datetime
 
 
 @dataclass(frozen=True)
@@ -99,9 +100,9 @@ def skill_dimension(form: QuestionForm, category: ItemCategory) -> SkillDimensio
 
 
 class SM2MasteryPolicy:
-    """Policy t05-v1: evidence-mapped outcomes, capped mastery, simplified SM-2."""
+    """Policy t05-v2: mastery requires recall on separate Japan days."""
 
-    version = "t05-v1"
+    version = "t05-v2"
     MASTERY_THRESHOLD = 0.80
     MASTERY_DELTAS = {
         ReviewOutcome.AGAIN: -0.08,
@@ -124,15 +125,17 @@ class SM2MasteryPolicy:
             return ReviewOutcome.AGAIN
         if answer.is_retry:
             return ReviewOutcome.HARD
-        successful_sessions = {
-            attempt.lesson_session_id for attempt in history if attempt.is_correct
+        current_day = (answer.answered_at + timedelta(hours=9)).date()
+        successful_days = {
+            (attempt.answered_at + timedelta(hours=9)).date()
+            for attempt in history if attempt.is_correct
         }
         successful_forms = {attempt.question_form for attempt in history if attempt.is_correct}
         successful_forms.add(answer.question_form.value)
-        separate_sessions = len(successful_sessions - {answer.lesson_session_id}) >= 2
+        separate_days = len(successful_days - {current_day}) >= 2
         if (
             state.consecutive_successful_reviews >= 2
-            and separate_sessions
+            and separate_days
             and len(successful_forms) >= 2
         ):
             # A guessed answer can never earn the strongest outcome.
@@ -223,7 +226,8 @@ def replay(
         state = policy.apply(state, history, answer, outcome)
         outcomes.append(outcome)
         history.append(
-            PastAttempt(answer.lesson_session_id, answer.question_form.value, answer.is_correct)
+            PastAttempt(answer.lesson_session_id, answer.question_form.value,
+                        answer.is_correct, answer.answered_at)
         )
     return state, tuple(outcomes)
 

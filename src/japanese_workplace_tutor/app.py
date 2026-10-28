@@ -3,6 +3,7 @@
 import re
 from collections.abc import Callable, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
+from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 
@@ -24,10 +25,16 @@ from .generation import (
     evaluate_graduation,
 )
 from .core.ports import ModelTransport
+from .core.priority import merge_blank_targets, suggest_personal_focus
+from .core.learning_path import route_scenario_matches
 from .llm.mock import MockTransport, RecordingTransport
 from .prompts import lessons as lesson_prompts, presentation as presentation_prompts, roleplay as roleplay_prompts
 from .review import REASONS, ReviewService, review_targets
-from .llm.openai_transport import OpenAICompatibleTransport
+from .llm.openai_transport import AzureOpenAITransport, OpenAICompatibleTransport
+from .personal_terms import PersonalTermService, TermValidationError
+from .situation_words import SituationWordService
+from .domain_words import DomainWordService
+from .today import TodayService, load_situation_steps, tag_today_draft
 from .lesson import (
     FixtureQuestion,
     ActiveLesson,
@@ -289,10 +296,20 @@ def _generation_service(
     quiz_fallback_model: str,
     llm_mode: str = "live",
     recording_path: str = "",
+    model_provider: str = "openai-compatible",
+    azure_api_version: str | None = None,
+    _apim_subscription_key: str | None = None,
+    apim_subscription_key_header: str = "Ocp-Apim-Subscription-Key",
 ) -> LessonGenerationService:
-    transport: ModelTransport = OpenAICompatibleTransport(
-        base_url, _api_key, timeout_seconds
-    )
+    transport: ModelTransport
+    if model_provider == "azure":
+        transport = AzureOpenAITransport(
+            base_url, _api_key, timeout_seconds, azure_api_version,
+            apim_subscription_key=_apim_subscription_key,
+            apim_subscription_key_header=apim_subscription_key_header,
+        )
+    else:
+        transport = OpenAICompatibleTransport(base_url, _api_key, timeout_seconds)
     if llm_mode == "record":
         transport = RecordingTransport(transport, Path(recording_path))
     return LessonGenerationService(
@@ -339,7 +356,7 @@ def _clear_active_review() -> None:
 
 def _continue_learning() -> None:
     _clear_active_review()
-    st.session_state.navigation = "Learn"
+    st.session_state.pending_navigation = "Learn"
 
 
 def _render_due_review(
@@ -412,11 +429,15 @@ def _render_due_review(
                 "next_review_at": service.get_next_review_at(user_id),
             }
             _clear_active_review()
+            if st.session_state.get("today_route"):
+                _continue_learning()
             st.rerun()
 
     st.button("Start a lesson", key="continue_learning", on_click=_continue_learning)
     if st.button("Skip review", key="skip_due_review"):
         _clear_active_review()
+        if st.session_state.get("today_route"):
+            _continue_learning()
         st.rerun()
 
 
@@ -424,6 +445,7 @@ def render_home(
     profile: ProfileRecord | None = None,
     service: LessonService | None = None,
     user_id: int | None = None,
+    today_service: TodayService | None = None,
 ) -> None:
     st.title("Home")
     username = st.session_state.get("authenticated_username")
@@ -445,6 +467,36 @@ def render_home(
         return
 
     _render_this_week(service, user_id)
+
+    plan = today_service.build_today_plan(user_id) if today_service else None
+    if plan is not None:
+        st.subheader("Today")
+        if plan.next_step is not None:
+            st.write(plan.next_step.title)
+            st.caption(plan.reason)
+            st.caption(f"Route steps completed: {plan.completed_steps} of {plan.total_steps}")
+            if plan.review_count:
+                st.caption(f"First, review up to {plan.review_count} due items. You can skip them.")
+            if st.button("Start today", type="primary", key="start_today"):
+                st.session_state.today_route = plan.next_step.topic_id
+                st.session_state.today_scenario = plan.next_step.scenario
+                st.session_state.lesson_scenario = plan.next_step.scenario
+                if plan.review_count:
+                    st.session_state.active_due_review = service.start_due_review(user_id)
+                    st.session_state.due_review_results = {}
+                else:
+                    _continue_learning()
+                st.rerun()
+        else:
+            st.write(plan.reason)
+        if plan.local_alternative is not None and plan.local_alternative != plan.next_step:
+            st.caption(f"Practice offline: {plan.local_alternative.title}")
+            if st.button("Practice offline", key="start_local_practice"):
+                st.session_state.today_route = plan.local_alternative.topic_id
+                st.session_state.today_scenario = ""
+                st.session_state.lesson_scenario = ""
+                _continue_learning()
+                st.rerun()
 
     summary = st.session_state.get("last_review_summary")
     if isinstance(summary, dict):
@@ -491,6 +543,7 @@ def _clear_active_lesson() -> None:
             "active_lesson_draft",
             "lesson_answer_results",
             "lesson_retry_results",
+            "quiz_visible",
             "lesson_fallback_notice",
             "quiz_generation_future",
             "quiz_generation_error",
@@ -644,17 +697,133 @@ def render_roleplay(
         st.rerun()
 
 
+def _render_lesson_study(lesson, line_explanations) -> None:
+    target_expressions = {item.expression for item in lesson.items}
+    points_by_line = {
+        line.japanese_text: _line_points(line) for line in line_explanations
+    }
+    furigana_column, english_column = st.columns(2)
+    show_furigana = furigana_column.toggle("Furigana", value=True, key="show_furigana")
+    show_english = english_column.toggle("Show English", value=False, key="show_english")
+
+    conversation_tab, breakdown_tab, glossary_tab = st.tabs(
+        ("Conversation", "Line breakdown", "Glossary")
+    )
+    with conversation_tab:
+        for number, dialogue_line in enumerate(
+            (line for line in lesson.passage.splitlines() if line.strip()), start=1
+        ):
+            _render_japanese_line(
+                dialogue_line.strip(),
+                points_by_line.get(dialogue_line.strip(), ()),
+                show_furigana,
+            )
+            if show_english and number <= len(line_explanations):
+                st.caption(line_explanations[number - 1].english_meaning)
+
+    with breakdown_tab:
+        if not line_explanations:
+            st.caption("This lesson has no line-by-line explanation.")
+        for number, line in enumerate(line_explanations, start=1):
+            introduced = _line_points(line)
+            summary = ", ".join(point.expression for point in introduced) or "review"
+            with st.expander(f"Line {number} — {summary}"):
+                _render_japanese_line(line.japanese_text, introduced, show_furigana)
+                st.write(line.english_meaning)
+                for label, points in (
+                    ("Kanji", line.kanji),
+                    ("Vocabulary", line.vocabulary),
+                    ("Grammar", line.grammar),
+                ):
+                    for point in points:
+                        badge = " ⭐ practice target" if point.expression in target_expressions else ""
+                        st.markdown(
+                            f"**{label} · {point.expression}** ({point.reading}){badge}"
+                        )
+                        st.write(f"{point.meaning}. {point.explanation}")
+
+    with glossary_tab:
+        glossary = _glossary(line_explanations)
+        if not glossary:
+            st.caption("This lesson has no glossary entries.")
+        for label, point, line_numbers in glossary:
+            lines_text = ", ".join(str(number) for number in line_numbers)
+            badge = " ⭐" if point.expression in target_expressions else ""
+            st.markdown(
+                f"**{point.expression}**{badge} ({point.reading}) · {label} · "
+                f"line {lines_text}"
+            )
+            st.write(f"{point.meaning}. {point.explanation}")
+
+
+def _render_today_practice(today_service: TodayService, step) -> None:
+    st.subheader(step.title)
+    if step.track == "grammar":
+        question = today_service.grammar_question(step)
+        if question is None:
+            st.warning("This grammar practice is not available yet.")
+            return
+        meaning, options = question
+        answer = st.radio(
+            f"Which Japanese form means '{meaning}'?", options,
+            index=None, key="today_grammar_answer",
+        )
+    else:
+        st.write("Put the chunks in order to build the workplace phrase.")
+        st.caption("Chunks: " + " / ".join(reversed(step.chunks)))
+        selections = tuple(st.selectbox(
+            f"Position {index + 1}", tuple(reversed(step.chunks)), index=None,
+            key=f"today_chunk_{index}",
+        ) for index in range(len(step.chunks)))
+        answer = (tuple(step.chunks.index(chunk) for chunk in selections)
+                  if all(chunk is not None for chunk in selections) else None)
+    if st.button("Check answer", key="submit_today_practice"):
+        if answer is None:
+            st.warning("Choose an answer first.")
+        elif today_service.submit_practice(
+            int(st.session_state.authenticated_user_id), step.topic_id, answer,
+        ):
+            st.session_state.pop("today_route", None)
+            st.session_state.pop("today_scenario", None)
+            st.session_state.today_practice_complete = True
+            st.rerun()
+        else:
+            st.error("Try another answer.")
+
+
 def render_learn(
     service: LessonService | None = None,
     user_id: int | None = None,
     profile: ProfileRecord | None = None,
     generation_service: LessonGenerationService | None = None,
     review_service: ReviewService | None = None,
+    term_service: PersonalTermService | None = None,
+    situation_service: SituationWordService | None = None,
+    domain_service: DomainWordService | None = None,
+    llm_mode: str = "live",
+    today_service: TodayService | None = None,
 ) -> None:
     st.title("Learn")
     if service is None or user_id is None:
         st.info("Sign in to start a lesson.")
         return
+
+    if st.session_state.pop("today_practice_complete", False):
+        st.success("Practice complete. Your next Today step is ready on Home.")
+
+    route_id = st.session_state.get("today_route")
+    route_step = next((step for step in load_situation_steps()
+                       if step.topic_id == route_id), None)
+    if (route_step is not None and route_step.track in {"grammar", "sentence-order"}
+            and today_service is not None):
+        _render_today_practice(today_service, route_step)
+        return
+
+    if llm_mode == "mock" and route_id:
+        st.info(
+            "Offline sample lessons do not complete a Today generated lesson route. "
+            "Configure a model to advance this route."
+        )
 
     if "last_lesson_completion" in st.session_state:
         st.success("Lesson completed. Your compact progress and review schedule were saved.")
@@ -684,6 +853,14 @@ def render_learn(
             horizontal=True,
         )
         st.caption(f"Detected/default mode: {detected_mode.value}. Confirm or change it above.")
+        completions = service.get_completions(user_id)
+        include_personal = (
+            st.checkbox(
+                "Focus this surprise lesson on one of my saved words",
+                value=suggest_personal_focus(len(completions)),
+                key=f"personal_focus_{len(completions)}",
+            ) if term_service is not None else False
+        )
         generation_disabled = generation_service is None or profile is None
         if generation_disabled:
             st.info("Scenario generation is unavailable until model configuration is complete.")
@@ -697,6 +874,32 @@ def render_learn(
         ) and generation_service is not None and profile is not None:
             try:
                 learning_history = service.get_progress(user_id)
+                now = datetime.now(timezone.utc).replace(tzinfo=None)
+                selected_targets = ()
+                if ScenarioMode(selected_mode) is ScenarioMode.GENERATE:
+                    if (domain_service is not None and route_scenario_matches(
+                            route_step, st.session_state.get("today_scenario"), scenario)):
+                        selected_targets = domain_service.route_targets(
+                            route_step.words, profile, tuple(learning_history), now
+                        )
+                    elif scenario.strip() and situation_service is not None:
+                        selected_targets = situation_service.lesson_targets(
+                            scenario, profile, tuple(learning_history), now
+                        )
+                    elif not scenario.strip():
+                        personal_targets = (
+                            term_service.lesson_targets(
+                                user_id, profile, tuple(learning_history), now
+                            ) if term_service is not None and include_personal else ()
+                        )
+                        domain_targets = (
+                            domain_service.lesson_targets(
+                                scenario, profile, tuple(learning_history), now
+                            ) if domain_service is not None else ()
+                        )
+                        selected_targets = merge_blank_targets(
+                            personal_targets, domain_targets
+                        )
                 generated = generation_service.generate_lesson_content(
                     scenario,
                     ScenarioMode(selected_mode),
@@ -704,15 +907,28 @@ def render_learn(
                     learning_history=learning_history,
                     recent_topic_ids=tuple(
                         completion.topic_id
-                        for completion in service.get_completions(user_id)[:10]
+                        for completion in completions[:10]
                     ),
+                    selected_targets=selected_targets,
+                )
+                generated = tag_today_draft(
+                    generated,
+                    (route_id if ScenarioMode(selected_mode) is ScenarioMode.GENERATE
+                     and (route_step is None or route_step.track != "words"
+                          or selected_targets) else None),
+                    st.session_state.get("today_scenario"),
+                    scenario,
+                    mock_mode=llm_mode == "mock",
                 )
             except GenerationError as error:
                 # Always-ship fallback: never dead-end the demo. If every model and
                 # repair attempt fails, load the ready-made fixture lesson so the
                 # learner can still complete the full loop, with an honest notice.
                 _clear_active_lesson()
+                st.session_state.pop("today_route", None)
+                st.session_state.pop("today_scenario", None)
                 st.session_state.active_lesson = service.start_fixture_lesson(user_id)
+                st.session_state.quiz_visible = False
                 st.session_state.lesson_answer_results = {}
                 st.session_state.lesson_retry_results = {}
                 st.session_state.lesson_fallback_notice = (
@@ -722,6 +938,8 @@ def render_learn(
                 )
                 st.rerun()
             else:
+                st.session_state.pop("today_route", None)
+                st.session_state.pop("today_scenario", None)
                 _clear_active_lesson()
                 active_draft = service.start_generated_lesson_draft(
                     user_id, generated
@@ -742,9 +960,12 @@ def render_learn(
         st.caption("Opening the lesson records exposure only. It does not raise mastery.")
         if st.button("Start fixture lesson", key="start_fixture_lesson"):
             _clear_active_lesson()
+            st.session_state.pop("today_route", None)
+            st.session_state.pop("today_scenario", None)
             st.session_state.active_lesson = service.start_fixture_lesson(
                 user_id
             )
+            st.session_state.quiz_visible = False
             st.session_state.lesson_answer_results = {}
             st.session_state.lesson_retry_results = {}
             st.rerun()
@@ -766,71 +987,17 @@ def render_learn(
     if provider_name is not None:
         st.caption(f"Lesson generated with {provider_name}")
 
-    target_expressions = {item.expression for item in lesson.items}
-    points_by_line = {
-        line.japanese_text: _line_points(line) for line in line_explanations
-    }
-    furigana_column, english_column = st.columns(2)
-    show_furigana = furigana_column.toggle("Furigana", value=True, key="show_furigana")
-    show_english = english_column.toggle(
-        "Show English", value=False, key="show_english"
+    quiz_visible = isinstance(active, ActiveLesson) and st.session_state.get(
+        "quiz_visible", True
     )
+    if not quiz_visible:
+        _render_lesson_study(lesson, line_explanations)
 
-    conversation_tab, breakdown_tab, glossary_tab = st.tabs(
-        ("Conversation", "Line breakdown", "Glossary")
-    )
-
-    with conversation_tab:
-        for number, dialogue_line in enumerate(
-            (line for line in lesson.passage.splitlines() if line.strip()), start=1
-        ):
-            _render_japanese_line(
-                dialogue_line.strip(),
-                points_by_line.get(dialogue_line.strip(), ()),
-                show_furigana,
-            )
-            if show_english and number <= len(line_explanations):
-                st.caption(line_explanations[number - 1].english_meaning)
-
-    with breakdown_tab:
-        if not line_explanations:
-            st.caption("This lesson has no line-by-line explanation.")
-        for number, line in enumerate(line_explanations, start=1):
-            introduced = _line_points(line)
-            summary = ", ".join(point.expression for point in introduced) or "review"
-            with st.expander(f"Line {number} — {summary}"):
-                _render_japanese_line(
-                    line.japanese_text, introduced, show_furigana
-                )
-                st.write(line.english_meaning)
-                for label, points in (
-                    ("Kanji", line.kanji),
-                    ("Vocabulary", line.vocabulary),
-                    ("Grammar", line.grammar),
-                ):
-                    for point in points:
-                        badge = (
-                            " ⭐ practice target"
-                            if point.expression in target_expressions
-                            else ""
-                        )
-                        st.markdown(
-                            f"**{label} · {point.expression}** ({point.reading}){badge}"
-                        )
-                        st.write(f"{point.meaning}. {point.explanation}")
-
-    with glossary_tab:
-        glossary = _glossary(line_explanations)
-        if not glossary:
-            st.caption("This lesson has no glossary entries.")
-        for label, point, line_numbers in glossary:
-            lines_text = ", ".join(str(number) for number in line_numbers)
-            badge = " ⭐" if point.expression in target_expressions else ""
-            st.markdown(
-                f"**{point.expression}**{badge} ({point.reading}) · {label} · "
-                f"line {lines_text}"
-            )
-            st.write(f"{point.meaning}. {point.explanation}")
+    if isinstance(active, ActiveLesson) and not quiz_visible:
+        if st.button("Quiz", type="primary", key="go_to_fixture_quiz"):
+            st.session_state.quiz_visible = True
+            st.rerun()
+        return
 
     if isinstance(draft, ActiveLessonDraft):
         future = st.session_state.get("quiz_generation_future")
@@ -865,6 +1032,7 @@ def render_learn(
                         st.session_state.active_lesson = (
                             service.activate_generated_quiz(draft, generated_quiz)
                         )
+                        st.session_state.quiz_visible = True
                         st.session_state.pop("active_lesson_draft", None)
                         st.session_state.pop("quiz_generation_future", None)
                     st.rerun()
@@ -879,14 +1047,9 @@ def render_learn(
     if active.quiz_provider_name is not None:
         st.caption(f"Quiz generated with {active.quiz_provider_name}")
     answer_results = st.session_state.setdefault("lesson_answer_results", {})
-    items_by_id = {item.canonical_id: item for item in lesson.items}
     for number, question in enumerate(lesson.questions, start=1):
         st.markdown(f"**{number}. {question.prompt}**")
         st.caption(_question_caption(question))
-        if question.form is QuestionForm.CONTEXTUAL_CLOZE:
-            source_item = items_by_id.get(question.item_id)
-            if source_item is not None:
-                st.caption(f"From the lesson: {source_item.example}")
         answer_key = f"lesson_answer_{active.lesson_session_id}_{question.question_id}"
         answered = question.question_id in answer_results
         selected_answer = st.radio(
@@ -1673,7 +1836,7 @@ def render_profile_editor(
     selected_role = st.selectbox(
         "Role or title",
         role_options,
-        index=role_options.index(profile.role) if profile is not None else 0,
+        index=role_options.index(profile.role) if profile is not None else None,
         accept_new_options=True,
         key=role_key,
         help="Search common roles or enter your own.",
@@ -1685,23 +1848,27 @@ def render_profile_editor(
         args=(role_key, tasks_key) if onboarding else None,
     )
 
-    suggested_tasks = list(ROLE_TASK_SUGGESTIONS.get(selected_role, ()))
-    selected_tasks = list(profile.tasks) if profile is not None else suggested_tasks
-    task_options = list(dict.fromkeys([*selected_tasks, *suggested_tasks]))
-    tasks = st.multiselect(
-        "Typical tasks",
-        task_options,
-        default=None if tasks_key in st.session_state else selected_tasks,
-        accept_new_options=True,
-        key=tasks_key,
-        help="Remove suggestions that do not fit, or enter edited and additional tasks.",
-    )
-    tools_domain = st.text_area(
-        "Technologies, tools, or business domain (optional)",
-        value=profile.tools_domain or "" if profile is not None else "",
-        max_chars=2000,
-        key=f"{prefix}_tools_domain",
-    )
+    if onboarding:
+        tasks = []
+        tools_domain = None
+    else:
+        suggested_tasks = list(ROLE_TASK_SUGGESTIONS.get(selected_role, ()))
+        selected_tasks = list(profile.tasks)
+        task_options = list(dict.fromkeys([*selected_tasks, *suggested_tasks]))
+        tasks = st.multiselect(
+            "Typical tasks",
+            task_options,
+            default=None if tasks_key in st.session_state else selected_tasks,
+            accept_new_options=True,
+            key=tasks_key,
+            help="Add the tasks you want lessons to cover.",
+        )
+        tools_domain = st.text_area(
+            "Technologies, tools, or business domain (optional)",
+            value=profile.tools_domain or "",
+            max_chars=2000,
+            key=f"{prefix}_tools_domain",
+        )
     level_values = [level.value for level in JapaneseLevel]
     declared_level = st.selectbox(
         "Self-reported Japanese level",
@@ -1713,6 +1880,19 @@ def render_profile_editor(
         ),
         key=f"{prefix}_declared_level",
     )
+    milestones = load_milestones()
+    milestone_names = [milestone.name for milestone in milestones]
+    selected_milestone = st.selectbox(
+        "Your goal",
+        milestone_names,
+        index=next(
+            (index for index, milestone in enumerate(milestones)
+             if profile is not None and milestone.id == profile.milestone_id),
+            0,
+        ),
+        key=f"{prefix}_milestone",
+    )
+    milestone_id = milestones[milestone_names.index(selected_milestone)].id
     romaji_preference = st.toggle(
         "Show romaji support",
         value=profile.romaji_preference if profile is not None else False,
@@ -1737,19 +1917,21 @@ def render_profile_editor(
             if onboarding:
                 service.create_profile(
                     user_id,
-                    role=selected_role,
+                    role=selected_role or "",
                     tasks=tasks,
                     tools_domain=tools_domain,
                     declared_level=declared_level,
+                    milestone_id=milestone_id,
                     romaji_preference=romaji_preference,
                 )
             else:
                 service.update_profile(
                     user_id,
-                    role=selected_role,
+                    role=selected_role or "",
                     tasks=tasks,
                     tools_domain=tools_domain,
                     declared_level=declared_level,
+                    milestone_id=milestone_id,
                     romaji_preference=romaji_preference,
                 )
         except ProfileValidationError as error:
@@ -1764,12 +1946,71 @@ def render_profile(
     service: ProfileService | None = None,
     user_id: int | None = None,
     profile: ProfileRecord | None = None,
+    term_service: PersonalTermService | None = None,
 ) -> None:
     if service is None or user_id is None:
         st.title("Profile")
         st.info("Sign in to view your learner profile.")
         return
     render_profile_editor(service, user_id, profile)
+    if profile is not None and term_service is not None:
+        render_personal_terms(term_service, user_id)
+
+
+def render_personal_terms(service: PersonalTermService, user_id: int) -> None:
+    st.divider()
+    st.subheader("Your words and grammar")
+    st.caption("Add public Japanese terms you want to practise. Readings come from the reference dictionary.")
+    kind = st.selectbox("Add", ("word", "grammar"), key="personal_terms_kind")
+    importance = st.selectbox("Importance", ("A", "S", "B"), key="personal_terms_importance")
+    pasted = st.text_area(
+        "One term per line, optionally followed by a comma and meaning",
+        key="personal_terms_paste",
+        max_chars=50000,
+    )
+    if st.button("Preview terms", key="preview_personal_terms"):
+        try:
+            preview = service.preview(user_id, pasted, kind=kind, importance=importance)
+        except TermValidationError as error:
+            st.error(str(error))
+        else:
+            st.session_state.personal_terms_preview = (pasted, kind, importance, preview)
+    current = st.session_state.get("personal_terms_preview")
+    if current is not None and current[:3] == (pasted, kind, importance):
+        preview = current[3]
+        st.dataframe(
+            [{"Term": row.expression, "Status": row.status,
+              "Reading": row.reading or "—", "Importance": row.importance}
+             for row in preview],
+            hide_index=True,
+        )
+        confirmed = st.checkbox(
+            "These terms are public and contain no client, project or internal names",
+            key="personal_terms_public",
+        )
+        if st.button("Save terms", key="save_personal_terms", disabled=not confirmed):
+            try:
+                count = service.save(user_id, preview, public_confirmed=confirmed)
+            except TermValidationError as error:
+                st.error(str(error))
+            else:
+                st.session_state.pop("personal_terms_preview", None)
+                st.success(f"Saved {count} term{'s' if count != 1 else ''}.")
+    terms = service.list_terms(user_id)
+    if terms:
+        choices = {f"{term.expression} ({term.kind}) · {term.id}": term for term in terms}
+        label = st.selectbox("Manage a term", list(choices), key="manage_personal_term")
+        term = choices[label]
+        grade = st.selectbox(
+            "Importance for this term", ("S", "A", "B"),
+            index=("S", "A", "B").index(term.importance), key="manage_term_importance",
+        )
+        hidden = st.checkbox("Hide from lesson targets", value=term.status == "hidden",
+                             key="manage_term_hidden")
+        if st.button("Update term", key="update_personal_term"):
+            service.set_importance(user_id, term.id, grade)
+            service.set_hidden(user_id, term.id, hidden)
+            st.rerun()
 
 
 PAGE_RENDERERS: dict[str, PageRenderer] = {
@@ -1854,6 +2095,14 @@ def clear_authenticated_session() -> None:
     st.session_state.pop("last_review_summary", None)
     st.session_state.pop("authenticated_user_id", None)
     st.session_state.pop("authenticated_username", None)
+    st.session_state.pop("personal_terms_preview", None)
+    for key in ("today_route", "today_scenario", "lesson_scenario",
+                "pending_navigation"):
+        st.session_state.pop(key, None)
+    for key in list(st.session_state):
+        if key.startswith(("personal_terms_", "manage_personal_term", "manage_term_",
+                           "personal_focus_")):
+            st.session_state.pop(key, None)
 
 
 def main() -> None:
@@ -1889,7 +2138,7 @@ def main() -> None:
     if settings.llm_mode == "mock":
         generation_service = _mock_generation_service(settings.mock_fixture_dir)
     elif settings.model_configured:
-        api_key = settings.model_api_key
+        api_key = settings.model_api_key or settings.apim_subscription_key
         if (
             settings.model_base_url is not None
             and api_key is not None
@@ -1912,6 +2161,11 @@ def main() -> None:
                 settings.quiz_fallback_model or settings.primary_model,
                 settings.llm_mode,
                 settings.llm_recording_path,
+                settings.model_provider,
+                settings.azure_api_version,
+                (settings.apim_subscription_key.get_secret_value()
+                 if settings.apim_subscription_key else None),
+                settings.apim_subscription_key_header,
             )
     profile = profile_service.get_profile(user_id)
     if profile is None:
@@ -1921,17 +2175,27 @@ def main() -> None:
 
     review_service = ReviewService(engine) if settings.reviewer_mode else None
     pages = [*PAGE_RENDERERS.keys(), *(["Accuracy"] if review_service else [])]
+    pending_navigation = st.session_state.pop("pending_navigation", None)
+    if pending_navigation in pages:
+        st.session_state.navigation = pending_navigation
     selected_page = st.sidebar.radio("Navigation", pages, key="navigation")
     if selected_page == "Home":
-        render_home(profile, lesson_service, user_id)
+        render_home(profile, lesson_service, user_id,
+                    TodayService(profile_service, lesson_service, toolkit))
     elif selected_page == "Learn":
-        render_learn(lesson_service, user_id, profile, generation_service, review_service)
+        render_learn(lesson_service, user_id, profile, generation_service,
+                     review_service, PersonalTermService(engine, toolkit),
+                     SituationWordService(toolkit) if settings.llm_mode != "mock" else None,
+                     DomainWordService(toolkit) if settings.llm_mode != "mock" else None,
+                     settings.llm_mode,
+                     TodayService(profile_service, lesson_service, toolkit))
     elif selected_page == "Presentation":
         render_presentation(generation_service, profile)
     elif selected_page == "Progress":
         render_progress(lesson_service, user_id, toolkit)
     elif selected_page == "Profile":
-        render_profile(profile_service, user_id, profile)
+        render_profile(profile_service, user_id, profile,
+                       PersonalTermService(engine, toolkit))
     elif selected_page == "Accuracy" and review_service is not None:
         render_accuracy(review_service)
     else:

@@ -6,7 +6,7 @@
 
 ### Context
 - The hackathon app won 3rd prize and continues as an internal NTT-AT tool on an on-prem server.
-- Model provider: OpenAI API (keys pending; mock mode for development and tests). An on-prem model may come later.
+- Model provider: Azure OpenAI API (endpoint, deployment and key remain local placeholders; mock mode for development and tests). An on-prem model may come later.
 - Pilot: 20–30 users from 2–3 teams for about 3 months; target around January 2027, to re-check against the longer phase plan.
 - No regular Japanese reviewers: Siddhartha and the team review accuracy once or twice, not monthly.
 
@@ -15,7 +15,7 @@ Each learner reaches a workplace goal they choose: they can read, write and pres
 
 ### Product principles added in v2
 - **The model proposes; the code decides.** Anything graded, stored as fact or shown as authoritative comes from curated data or a code check. JLPT levels, readings and answer keys never come straight from the model.
-- **Trust before scale.** The team accuracy review (Phase 2 gate) comes before multi-user and the pilot.
+- **Trust before pilot.** Code verification remains in Phase 2; the team accuracy review is a Phase 5 pre-pilot gate, after personal learning and runtime work.
 - **Privacy.** Only content the learner confirms is public goes to OpenAI (checkbox plus warning). Private work documents are not sent. Every prompt task is tagged PUBLIC or PRIVATE.
 - **Progress is replayed from evidence.** Answers are stored once and never changed; mastery comes from a versioned policy, so the rules can change and old answers are re-scored.
 - **Honest progress.** No streaks or points; measure recall after a gap.
@@ -50,10 +50,10 @@ Each learner reaches a workplace goal they choose: they can read, write and pres
 | --- | --- | --- |
 | 0 Baseline (done) | Tag the hackathon build, mock mode, golden set | Tests pass offline |
 | 1 Split the core (done) | Core rules separate from UI and AI | No feature imports an AI SDK |
-| 2 Trust layer (built) | Nothing graded comes unchecked from the AI | Team accuracy review below an error-rate target |
+| 2 Trust layer (built) | Nothing graded comes unchecked from the AI | Offline trust and architecture tests pass |
 | 3 Personal learning | Lessons fit each person's job and goal | Next-step picks make sense for at least three roles |
 | 4 Multi-user runtime | Many users on the on-prem server | Load test with 30 simulated users |
-| 5 Content bank and pilot | Placement, milestone checks, pilot | Pilot review: flag rate, cost per lesson, retention |
+| 5 Content bank and pilot | Team accuracy review, placement, milestone checks, pilot | Team-set accuracy threshold before pilot; pilot review: flag rate, cost per lesson, retention |
 
 ### Pilot success measures
 Recall rate at due reviews, 30-day retention, coverage growth per month, placement score before and after, can-do self-ratings.
@@ -65,7 +65,7 @@ Recall rate at due reviews, 30-day retention, coverage growth per month, placeme
 | 6 Placement | Optional placement | Required before the pilot (Phase 5) for a starting score |
 | 8 Document learning | Ephemeral document lessons | On hold: private documents may not go to OpenAI |
 | 9 Question types | Multiple choice only; no typed answers | Typed answers graded by code are planned (Phase 3). A question is graded only when code verifies its key; otherwise it is practice |
-| 9 Guessing protection | Success across forms and separate reviews | Success across forms on separate **days** (current code counts separate sessions; fix planned before the team review) |
+| 9 Guessing protection | Success across forms and separate reviews | Success across forms on separate **days** (policy `t05-v2`); stored progress from earlier policy versions needs a replay audit |
 | 10 JLPT reference strategy | JLPT lists, else model judgment | tanos JLPT lists, OpenJLPT only for gaps, curated overrides, a Business Japanese list; a word on several levels counts at its easiest; levels never from the model |
 | 10 Persisted history | No lesson text stored | Item names are stored (reference-list spelling only, never learner text) for the progress page and due reviews |
 | 11 Translation | In MVP scope | Still in v1 scope; not built yet |

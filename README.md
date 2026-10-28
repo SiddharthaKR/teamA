@@ -27,7 +27,7 @@ Dependencies point inward toward a pure core; `lint-imports` (run by the test su
 
 | Package | Holds | May not import |
 |---|---|---|
-| `core/` | Domain types (items, questions, learner, inputs), Japanese script helpers, the progress policy `t05-v1` as pure functions with `replay()`, ports (`ModelTransport`, `DataClass`) | Anything with IO: Streamlit, SQLAlchemy, requests, or any outer package |
+| `core/` | Domain types (items, questions, learner, inputs), Japanese script helpers, the progress policy `t05-v2` as pure functions with `replay()`, ports (`ModelTransport`, `DataClass`) | Anything with IO: Streamlit, SQLAlchemy, requests, or any outer package |
 | `schemas/` | Pydantic contracts the model must satisfy | Features, the gateway, transports |
 | `prompts/` | Versioned prompt builders (`PROMPT_VERSION` per feature), pinned byte for byte by `tests/test_prompts.py` | Features, the gateway, transports |
 | `llm/` | `gateway.py`: the single path for model calls (routing, repair, fallback, hedging, PUBLIC/PRIVATE guard). `openai_transport.py`, `mock.py`: adapters | - |
@@ -111,15 +111,20 @@ It never displays setting values. If model settings are absent, all non-model pa
 
 ## Due-item review
 
+- Home shows a draft route for the learner's chosen milestone. **Start today** opens up to five due reviews first (skippable), then the suggested step on Learn. Each milestone currently has three situations, one word lesson, one local grammar check, and one local phrase-order check. Home offers one offline practice alternative when a local step is waiting. Correct local answers advance their steps without changing mastery. Completed generated lessons advance situation and word routes using a stored topic ID; repeating a step counts once. Offline sample lessons do not advance generated routes.
 - Home queries the signed-in learner's persisted schedules. When items are due, **Review due items** is the primary action and shows the total due count; **Start a lesson** remains available.
 - A review contains at most five items ordered by earliest due date, lowest mastery, then canonical ID. The deterministic question targets the weakest available evidence dimension.
-- Starting or skipping a review does not change progress. Only submitted multiple-choice answers update compact evidence, mastery, and SM-2 schedules through policy `t05-v1`.
+- Starting or skipping a review does not change progress. Only submitted graded answers update compact evidence, mastery, and SM-2 schedules through policy `t05-v2`.
 - Each submission is idempotent for the user, review session, and question. Immediate feedback shows the mapped outcome and new review date.
 - Completing a review returns Home, reports the result, shows the earliest remaining review schedule, and refreshes the due count. Review prompts and feedback remain session-only and are not stored in SQLite.
 
 ## Generated scenario lessons
 
 - Learn accepts an optional workplace situation or goal, or Japanese text up to 4,000 characters. English defaults to **Generate a lesson from this scenario** and Japanese defaults to **Explain this Japanese text**; the learner confirms or changes the mode before generation. A blank Generate-mode request creates a varied surprise workplace lesson and avoids recently completed topic IDs.
+- For a blank Generate-mode request, a checkbox can focus the lesson on one verified, level-appropriate word from the learner's public personal list. It defaults on for the first and every third completed lesson; the learner can override it. Words rotate by exposure, and mastered words wait until due. The generator must use and explain the selected word or the lesson is rejected. Explicit scenarios and Explain mode keep their original subject and text. Mock fixtures may not contain arbitrary personal words, so personalized generation needs a configured model.
+- For a typed English scenario that matches a versioned workplace situation, local code selects up to two dictionary-backed words at an appropriate level. These join the existing content prompt as one target list, with no extra model call. The same dialogue-and-explanation check applies. Unknown situations have no forced words; Explain mode is untouched. The situation mapping is a draft awaiting human relevance review, and mock fixtures do not apply these dynamic targets.
+- The situation map also covers handovers and explicit customer follow-ups. For recognized workplace situations, the named conversation partner and learner role/domain can change word ranking. Blank surprise lessons choose from draft general office, software, project management, or sales packs and may include a due reference word outside the personal list. A personal-focus lesson keeps one personal word and leaves one slot for a due or pack word. The packs and situation membership await named relevance review; every selected expression is checked against `business-v1` and the learner's level.
+- Mixed prompts about a party, weekend, or social event do not force workplace-set words even if they mention a meeting or status update. The AI-led content request handles those prompts. This guard is intentionally narrow; other ambiguous topics may still need evaluation.
 - For scenario generation, the scenario's technical, general, or social subject outranks the learner's role and tasks. Role data adjusts relationships, register, and difficulty without injecting technical content into a general or social situation. Generated passages are actual multi-turn, speaker-labelled workplace conversations rather than lesson descriptions.
 - Explain mode preserves the supplied Japanese text exactly. It cannot rewrite, correct, extend, or add Japanese sentences, and target-item examples must reuse exact source lines.
 - Every generated passage line has a visible line-by-line English meaning plus structured kanji, vocabulary, and grammar explanations. The content response must pass a strict Pydantic schema requiring complete ordered line coverage and 3-7 Japanese target items drawn from those explanations before anything renders.
@@ -133,13 +138,13 @@ It never displays setting values. If model settings are absent, all non-model pa
 - Opening validated content records exposure once. Promoting its validated quiz does not record exposure again, and answers use the same application-owned scoring, corrective retry, mastery, SM-2, idempotency, and minimal completion-metadata path as the fixture lesson. Model output cannot set progress or schedules.
 - Generated passage, examples, prompts, options, explanations, feedback, recap, and scenario text remain in Streamlit session state only. Total provider failure preserves the scenario for retry and creates no exposure or progress rows.
 
-### Mastery policy `t05-v1`
+### Mastery policy `t05-v2`
 
 - Evidence dimensions are recognition, reading, contextual use, and grammar application. Full question text and feedback are never persisted.
 - `Again` is an incorrect answer: mastery changes by `-0.08` to a floor of `0`, ease drops by `0.20`, the interval resets to `0`, and review is due in 10 minutes.
 - `Hard` is a correct alternate-form retry after failure: mastery changes by `+0.08`, ease drops by `0.15`, and review is due in one day. The original `Again` row remains immutable.
 - `Good` is a first-try success: mastery changes by `+0.18`, ease rises by `0.05`, and intervals progress from 1 day to 3 days, then multiply by ease.
-- `Easy` changes mastery by `+0.30`, raises ease by `0.15`, and multiplies a minimum 4-day interval by ease and `1.3`. It requires at least two preceding consecutive first-try successes in separate sessions and successful evidence from at least two question forms.
+- `Easy` changes mastery by `+0.30`, raises ease by `0.15`, and multiplies a minimum 4-day interval by ease and `1.3`. It requires at least two preceding consecutive first-try successes on separate Japan calendar days and successful evidence from at least two question forms.
 - Mastery is `0.80`. Non-Easy evidence and evidence from only one form are capped at `0.79`, so one response, one session, or repeated same-form guesses cannot master an item.
 
 Golden vectors from an initial ease of `2.50`: `Again` gives mastery/ease/interval `0.00/2.30/0`; recovery `Hard` gives `0.08/2.15/1`. Two later `Good` sessions followed by two eligible `Easy` sessions produce mastery `0.08 → 0.26 → 0.44 → 0.74 → 1.00`, ease `2.15 → 2.20 → 2.25 → 2.40 → 2.55`, and intervals `1 → 3 → 7 → 22 → 73` days.
@@ -163,8 +168,12 @@ All settings use the `JLT_` environment prefix:
 | Variable | Required now | Purpose |
 |---|---:|---|
 | `JLT_DATABASE_URL` | No | SQLAlchemy URL; defaults to `sqlite:///data/app.db` |
-| `JLT_MODEL_BASE_URL` | For generation | OpenAI-compatible endpoint |
+| `JLT_MODEL_BASE_URL` | For generation | OpenAI-compatible base URL; for Azure v1, `https://<resource>.openai.azure.com/openai/v1` |
 | `JLT_MODEL_API_KEY` | For generation | Shared model credential |
+| `JLT_APIM_SUBSCRIPTION_KEY` | When APIM requires a subscription | Gateway subscription key, stored separately from the Azure model credential |
+| `JLT_APIM_SUBSCRIPTION_KEY_HEADER` | No | APIM key header name; defaults to `Ocp-Apim-Subscription-Key`. Use the name in APIM's `WWW-Authenticate` challenge when customized |
+| `JLT_MODEL_PROVIDER` | No | `openai-compatible` (default) or `azure`; Azure sends the key in the `api-key` header |
+| `JLT_AZURE_API_VERSION` | Azure deployment route only | Leave unset for Azure v1; set a supported version when using the Azure resource root URL |
 | `JLT_PRIMARY_MODEL` | For generation | Primary Tsuzumi model ID |
 | `JLT_FALLBACK_MODEL` | For generation | Fallback GPT model ID |
 | `JLT_MODEL_TIMEOUT_SECONDS` | No | Per-attempt provider timeout; defaults to 180 seconds |

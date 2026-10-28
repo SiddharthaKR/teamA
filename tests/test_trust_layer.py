@@ -224,7 +224,7 @@ def test_practice_answers_are_logged_but_never_change_progress(tmp_path: Path) -
 
 def test_fixture_lesson_questions_are_curated_and_graded() -> None:
     assert all(question.key_source is KeySource.CURATED for question in FIXTURE_LESSON.questions)
-    assert LessonService.POLICY_VERSION == "t05-v1"
+    assert LessonService.POLICY_VERSION == "t05-v2"
 
 
 @pytest.mark.parametrize("level", list(JapaneseLevel))

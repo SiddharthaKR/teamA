@@ -237,13 +237,15 @@ Both projects are single-user tools, so we take their structure and discipline, 
 ```mermaid
 flowchart TD
   P0["Phase 0 · Baseline (done)<br/>tag hackathon-final, v2 branch, mock fixtures, golden set v0"] --> P1["Phase 1 · Split the core (done)<br/>core/, features/, prompts, gateway, import-linter"]
-  P1 --> P2["Phase 2 · Trust layer (built)<br/>toolkit, lemma item IDs, derived keys, 80/20 gate<br/>gate: team accuracy review"]
+  P1 --> P2["Phase 2 · Trust layer (built)<br/>toolkit, lemma item IDs, derived keys, 80/20 gate<br/>gate: offline trust checks"]
   P2 --> P3["Phase 3 · Personal learning<br/>personal lists + S/A/B, milestone choice, word priority, learning path<br/>gate: next-step picks checked on real profiles"]
   P3 --> P4["Phase 4 · Multi-user runtime<br/>FastAPI, PostgreSQL, worker, TTL sessions, budgets<br/>gate: load test with 30 simulated users"]
-  P4 --> P5["Phase 5 · Content bank and pilot<br/>placement, milestone task checks, maintenance mode, eval suite in CI, pilot<br/>gate: pilot review (flag rate, cost per lesson)"]
+  P4 --> P5["Phase 5 · Content bank and pilot<br/>team accuracy review, placement, milestone task checks, eval suite in CI, pilot<br/>gate: accuracy threshold before recruitment, then pilot review"]
 ```
 
-Phase 2 comes before the multi-user runtime on purpose: scaling an app whose answer keys are untrusted only spreads wrong answers to more people. Confirmed (decision 9): the Phase 2 gate is a hands-on accuracy review by Siddhartha and the team, using all three methods in decision 9. Phase 3 starts only when the error rate meets the target they set. No dates yet; they depend on team size and the pilot date (Open question 7).
+**2026-10-28 phase-order update:** Code verification remains in Phase 2. By user direction, the hands-on team accuracy review moves to Phase 5 before pilot recruitment, using the three methods in decision 9 and a threshold set before scoring. Phase 3 can proceed with offline tests and mock mode. No dates yet; they depend on team size and the pilot date (Open question 7).
+
+**Provider update:** The `v3` implementation accepts Azure OpenAI v1 and versioned deployment chat-completion routes. Its endpoint, deployment names, and API key remain local configuration values; live verification waits for those values.
 
 **Revised 2026-10-25 (decision 16).** Phase 3 is now personal learning: personal lists, word priority, the learning path and milestone choice. The multi-user runtime moves to Phase 4, and the content bank, milestone task checks and pilot become Phase 5. The pilot date (decision 7, around January 2027) needs re-checking against the longer path.
 
@@ -270,7 +272,7 @@ Each learner keeps a personal list on top of the shared reference lists (decisio
 
 **Privacy.** List entries are sent to the model as lesson targets, so both add boxes carry the same public-only checkbox and note as the deck localizer: no project names, client names or internal terms (decision 2).
 
-**Build.** One table, `personal_terms` (user, kind, expression, lemma, reading, meaning, grade S/A/B, status active or hidden, source single or pasted, created at). The difficulty check and the lesson generator each read it through a port. A small settings page. Roughly one day plus tests, after the Phase 2 gate.
+**Build.** One table, `personal_terms` (user, kind, expression, lemma, reading, meaning, grade S/A/B, status active or hidden, source single or pasted, created at). The difficulty check and the lesson generator each read it through a port. A small settings page. Roughly one day plus tests; see the Phase 3 implementation plan for sequencing.
 
 ### End goal: milestones the learner chooses
 

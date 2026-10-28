@@ -1,6 +1,7 @@
 """The progress policy is a pure function of evidence and can be replayed."""
 
 from datetime import datetime, timedelta
+from dataclasses import replace
 
 from japanese_workplace_tutor.core.items import (
     AnswerConfidence,
@@ -82,3 +83,38 @@ def test_single_form_success_cannot_master_an_item() -> None:
     state, _ = replay(POLICY, same_form)
 
     assert state.mastery_score < POLICY.MASTERY_THRESHOLD
+
+
+def test_same_day_sessions_cannot_earn_easy_or_mastery() -> None:
+    same_day = (
+        answer(0, "s1", QuestionForm.MEANING),
+        answer(0, "s2", QuestionForm.READING),
+        answer(0, "s3", QuestionForm.MEANING),
+        answer(0, "s4", QuestionForm.READING),
+    )
+    state, outcomes = replay(POLICY, same_day)
+    assert ReviewOutcome.EASY not in outcomes
+    assert state.mastery_score < POLICY.MASTERY_THRESHOLD
+
+
+def test_successes_on_three_japan_days_can_earn_easy() -> None:
+    spaced = (
+        answer(0, "s1", QuestionForm.MEANING),
+        answer(1, "s2", QuestionForm.READING),
+        answer(2, "s3", QuestionForm.MEANING),
+    )
+    _, outcomes = replay(POLICY, spaced)
+    assert outcomes[-1] is ReviewOutcome.EASY
+
+
+def test_japan_midnight_sets_the_day_boundary() -> None:
+    near_midnight = (
+        replace(answer(0, "s1", QuestionForm.MEANING),
+                answered_at=datetime(2026, 11, 1, 14, 59)),
+        replace(answer(0, "s2", QuestionForm.READING),
+                answered_at=datetime(2026, 11, 1, 15, 1)),
+        replace(answer(0, "s3", QuestionForm.MEANING),
+                answered_at=datetime(2026, 11, 2, 15, 1)),
+    )
+    _, outcomes = replay(POLICY, near_midnight)
+    assert outcomes[-1] is ReviewOutcome.EASY

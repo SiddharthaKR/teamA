@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from .core.learner import JapaneseLevel, LevelSource, ProfileRecord  # noqa: F401 (re-exported)
 from .models import LearnerProfile
+from .progress_view import load_milestones
 
 MAX_ROLE_LENGTH = 256
 MAX_TASK_LENGTH = 256
@@ -58,6 +59,14 @@ class ProfileInput(BaseModel):
     tools_domain: str | None = Field(default=None, max_length=MAX_TOOLS_DOMAIN_LENGTH)
     declared_level: JapaneseLevel
     romaji_preference: bool = False
+    milestone_id: str = "get-by"
+
+    @field_validator("milestone_id")
+    @classmethod
+    def validate_milestone_id(cls, value: str) -> str:
+        if value not in {milestone.id for milestone in load_milestones()}:
+            raise ValueError("Choose a valid milestone.")
+        return value
 
     @field_validator("role")
     @classmethod
@@ -81,8 +90,6 @@ class ProfileInput(BaseModel):
                 )
             if normalized not in normalized_tasks:
                 normalized_tasks.append(normalized)
-        if not normalized_tasks:
-            raise ValueError("Add at least one typical task.")
         return normalized_tasks
 
     @field_validator("tools_domain")
@@ -129,6 +136,7 @@ def _to_record(profile: LearnerProfile) -> ProfileRecord:
         level_source=LevelSource(profile.level_source),
         level_confidence=profile.level_confidence,
         romaji_preference=profile.romaji_preference,
+        milestone_id=profile.milestone_id,
     )
 
 
@@ -152,6 +160,7 @@ class ProfileService:
         declared_level: JapaneseLevel | str,
         tools_domain: str | None = None,
         romaji_preference: bool = False,
+        milestone_id: str = "get-by",
     ) -> ProfileRecord:
         profile_input = _validated_input(
             role=role,
@@ -159,6 +168,7 @@ class ProfileService:
             tools_domain=tools_domain,
             declared_level=declared_level,
             romaji_preference=romaji_preference,
+            milestone_id=milestone_id,
         )
         profile = LearnerProfile(
             user_id=user_id,
@@ -169,6 +179,7 @@ class ProfileService:
             level_source=LevelSource.SELF_REPORTED.value,
             level_confidence=1.0,
             romaji_preference=profile_input.romaji_preference,
+            milestone_id=profile_input.milestone_id,
         )
         try:
             with Session(self._engine) as session:
@@ -190,25 +201,28 @@ class ProfileService:
         declared_level: JapaneseLevel | str,
         tools_domain: str | None = None,
         romaji_preference: bool = False,
+        milestone_id: str | None = None,
     ) -> ProfileRecord:
-        profile_input = _validated_input(
-            role=role,
-            tasks=tasks,
-            tools_domain=tools_domain,
-            declared_level=declared_level,
-            romaji_preference=romaji_preference,
-        )
         with Session(self._engine) as session:
             profile = session.scalar(
                 select(LearnerProfile).where(LearnerProfile.user_id == user_id)
             )
             if profile is None:
                 raise ProfileNotFoundError("Learner profile not found.")
+            profile_input = _validated_input(
+                role=role,
+                tasks=tasks,
+                tools_domain=tools_domain,
+                declared_level=declared_level,
+                romaji_preference=romaji_preference,
+                milestone_id=milestone_id if milestone_id is not None else profile.milestone_id,
+            )
             profile.role = profile_input.role
             profile.tasks = profile_input.tasks
             profile.tools_domain = profile_input.tools_domain
             profile.declared_level = profile_input.declared_level.value
             profile.romaji_preference = profile_input.romaji_preference
+            profile.milestone_id = profile_input.milestone_id
             session.commit()
             session.refresh(profile)
             return _to_record(profile)

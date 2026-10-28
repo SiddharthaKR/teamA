@@ -505,7 +505,7 @@ def test_mode_detection_and_direct_tsuzumi_success(caplog: pytest.LogCaptureFixt
     assert result.provider_name == "Tsuzumi 2"
     assert transport.calls == ["tsuzumi-id"]
     assert "Tsuzumi 2" in caplog.text
-    assert "prompt_version=lessons-v1 data_class=public" in caplog.text
+    assert "prompt_version=lessons-v2 data_class=public" in caplog.text
     assert "clarify a software requirement" not in caplog.text
 
 
@@ -532,6 +532,52 @@ def test_content_and_quiz_are_generated_as_independent_grounded_packages() -> No
     assert transport.calls == ["tsuzumi-id", "tsuzumi-id"]
     assert "validated Japanese lesson data" in transport.system_prompts[1]
     assert TARGET_ITEM_IDS[0] in transport.user_prompts[1]
+
+
+def test_selected_personal_target_is_in_prompt_and_validated_lesson() -> None:
+    from japanese_workplace_tutor.core.priority import RankedTarget
+
+    target = RankedTarget(TARGET_ITEM_IDS[0], "仕様", 1.0, "personal priority")
+    transport = FakeTransport([json.dumps(conversation_payload())])
+    draft = generator(transport).generate_lesson_content(
+        "", ScenarioMode.GENERATE, profile(), selected_targets=(target,)
+    )
+    assert "仕様" in transport.user_prompts[0]
+    assert "仕様" in draft.content.passage
+    assert target.item_id in {item.canonical_id for item in draft.content.items}
+
+
+def test_situation_targets_share_the_existing_content_request() -> None:
+    from dataclasses import replace
+    from datetime import datetime
+    from japanese_workplace_tutor.situation_words import SituationWordService
+
+    scenario = "Clarify a requirement"
+    learner = replace(profile(), role="Office worker")
+    targets = SituationWordService(TOOLKIT).lesson_targets(
+        scenario, learner, (), datetime(2026, 11, 1)
+    )
+    assert targets
+    transport = FakeTransport([json.dumps(conversation_payload())])
+    draft = generator(transport).generate_lesson_content(
+        scenario, ScenarioMode.GENERATE, learner, selected_targets=targets
+    )
+    assert len(transport.calls) == 1
+    assert all(target.expression in transport.user_prompts[0] for target in targets)
+    assert {target.item_id for target in targets} <= {
+        item.canonical_id for item in draft.content.items
+    }
+
+
+def test_missing_selected_target_rejects_generated_lesson() -> None:
+    from japanese_workplace_tutor.core.priority import RankedTarget
+
+    target = RankedTarget("vocabulary:missing", "障害", 1.0, "personal priority")
+    transport = FakeTransport([json.dumps(conversation_payload())] * 4)
+    with pytest.raises(GenerationError):
+        generator(transport).generate_lesson_content(
+            "", ScenarioMode.GENERATE, profile(), selected_targets=(target,)
+        )
 
 
 def test_split_contracts_reject_missing_lines_and_unknown_quiz_items() -> None:
@@ -984,6 +1030,21 @@ def test_parallel_explanations_build_the_same_validated_package() -> None:
     assert any(
         "Do not explain any language" in prompt for prompt in transport.system_prompts
     )
+
+
+def test_split_generation_rejects_missing_selected_target_as_generation_error() -> None:
+    from japanese_workplace_tutor.core.priority import RankedTarget
+
+    transport = SplitTransport(json.dumps(dialogue_payload()), line_explanation_payloads())
+    service = LessonGenerationService(
+        transport, "tsuzumi-id", "gpt-id", parallel_explanations=True
+    )
+    with pytest.raises(GenerationError):
+        service.generate_lesson_content(
+            "", ScenarioMode.GENERATE, profile(),
+            selected_targets=(RankedTarget("vocabulary:missing", "障害", 1.0,
+                                           "personal priority"),),
+        )
 
 
 def test_the_split_path_is_off_unless_enabled() -> None:

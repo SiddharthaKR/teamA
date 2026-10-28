@@ -38,3 +38,17 @@ def test_complete_model_settings_report_presence_without_secret(monkeypatch) -> 
     assert settings.model_status == "Configured"
     assert isinstance(settings.model_api_key, SecretStr)
     assert "unit-test-sensitive-value" not in repr(settings)
+
+
+def test_azure_can_use_apim_subscription_key_and_custom_header() -> None:
+    settings = Settings(
+        model_provider="azure",
+        model_base_url="https://gateway.azure-api.net/ai/openai/v1",
+        apim_subscription_key="apim-test-key",
+        apim_subscription_key_header="Authorization",
+        primary_model="deployment-a",
+        fallback_model="deployment-b",
+        _env_file=None,
+    )
+    assert settings.model_configured is True
+    assert settings.apim_subscription_key.get_secret_value() == "apim-test-key"

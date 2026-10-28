@@ -1,0 +1,11 @@
+{
+  "version": "domain-packs-v1",
+  "source": "business-v1",
+  "review_status": "draft; named relevance review pending",
+  "packs": [
+    {"id": "general-office", "roles": [], "domains": [], "words": ["会議", "報告", "確認", "予定", "連絡", "相談", "資料", "依頼"]},
+    {"id": "software", "roles": ["software", "developer"], "domains": ["software", "programming", "information technology"], "words": ["仕様", "要件", "設計", "開発", "実装", "試験", "不具合", "修正"]},
+    {"id": "project-management", "roles": ["project manager", "program manager"], "domains": ["project management", "planning"], "words": ["進捗", "調整", "期限", "担当", "課題", "提案", "確認", "共有"]},
+    {"id": "sales", "roles": ["sales", "account executive"], "domains": ["sales", "account management"], "words": ["顧客", "取引先", "見積もり", "契約", "提案", "問い合わせ", "対応", "納期"]}
+  ]
+}

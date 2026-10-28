@@ -1,6 +1,6 @@
 {
  "name": "Japanese Workplace Tutor",
- "version": "2026-10-25 · v2 · after Phase 2 · archmap-1",
+ "version": "2026-10-28 · v3 · Phase 3 personal lists · archmap-1",
  "package": "japanese_workplace_tutor",
  "rows": [
   {
@@ -185,7 +185,8 @@
    "phase": null,
    "description": "Learner-facing progress: named items with status (new, learning, mastered, slipping), coverage of each JLPT, grammar and Business set, and word progress toward the three milestones (milestones_v1.json, target 80%). Over time (decision 15): items mastered per week, recall after a 12-hour gap per week, and each milestone's change over 4 weeks, all replayed from stored answers; nothing extra is stored.",
    "modules": [
-    "progress_view"
+    "progress_view",
+    "today"
    ],
    "tools": [
     "build_progress_view",
@@ -210,11 +211,13 @@
    "description": "Local demo accounts (Argon2id) and learner profiles. SSO can replace accounts behind an identity boundary later.",
    "modules": [
     "profile",
-    "auth"
+    "auth",
+    "personal_terms"
    ],
    "tools": [
     "ProfileService",
-    "AuthenticationService"
+    "AuthenticationService",
+    "PersonalTermService"
    ],
    "decisions": [],
    "wide": false,
@@ -297,9 +300,10 @@
    "status": "built",
    "kind": "code",
    "phase": null,
-   "description": "Content first, then a quiz. Target items derived from explained points; keys verified; difficulty gated.",
+   "description": "Content first, then a quiz. Target items derived from explained points; optional local situation sets choose verified words before generation; keys verified; difficulty gated.",
    "modules": [
-    "features.lessons"
+    "features.lessons",
+    "situation_words"
    ],
    "tools": [
     "LessonGenerator.generate_lesson_content",
@@ -443,11 +447,13 @@
    "ref": "U28",
    "label": "Word priority",
    "row": "features",
-   "status": "planned",
+   "status": "built",
    "kind": "code",
    "phase": "Phase 3",
-   "description": "Code picks each lesson's target words from a shared word bank by need score: 0.4 domain (best over the learner's domains) + 0.3 situation + 0.2 who they talk to + 0.1 frequency, times S/A/B grade, (1 - mastery) and a level filter. Computed per lesson, never stored per user. Broad packs: general office, engineering common, hardware, software, AI/ML, network, electronics lab, quantum, sales, marketing, management, other (nearest by similarity). AI-drafted pack words are kept only if in the dictionary; confirmed by a second source or half weight; one start-up review, then learner signals.",
-   "modules": [],
+   "description": "Local target ranking uses domain, recognized situation, named conversation partner, frequency, personal importance, mastery, due status, and level. Versioned draft packs cover general office, software, project management, and sales; membership awaits named relevance review. Blank lessons rotate pack words and can include a due reference word outside the personal list. Other domain packs, learner signals, and broader preference capture remain planned.",
+   "modules": [
+    "domain_words"
+   ],
    "tools": [
     "word bank",
     "need score",
@@ -618,7 +624,9 @@
     "core.errors",
     "core.japanese",
     "core.coverage",
-    "core.history"
+    "core.history",
+    "core.priority",
+    "core.learning_path"
    ],
    "tools": [
     "SM2MasteryPolicy",
@@ -935,6 +943,12 @@
   },
   {
    "source": "ui",
+   "target": "f_lessons",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "ui",
    "target": "records",
    "kind": "depends",
    "label": ""
@@ -978,6 +992,18 @@
   {
    "source": "profiles",
    "target": "core",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "profiles",
+   "target": "progress_view",
+   "kind": "depends",
+   "label": ""
+  },
+  {
+   "source": "profiles",
+   "target": "f_lessons",
    "kind": "depends",
    "label": ""
   },
@@ -1331,6 +1357,24 @@
   },
   {
    "source": "progress_view",
+   "target": "profiles",
+   "kind": "depends",
+   "label": "Today profile"
+  },
+  {
+   "source": "progress_view",
+   "target": "records",
+   "kind": "depends",
+   "label": "completed lessons"
+  },
+  {
+   "source": "progress_view",
+   "target": "schemas",
+   "kind": "depends",
+   "label": "lesson draft"
+  },
+  {
+   "source": "progress_view",
    "target": "f_lessons",
    "kind": "depends",
    "label": "item ids"
@@ -1378,6 +1422,24 @@
    "label": "readings, levels"
   },
   {
+   "source": "f_priority",
+   "target": "core",
+   "kind": "depends",
+   "label": "rank and level filter"
+  },
+  {
+   "source": "f_priority",
+   "target": "f_lessons",
+   "kind": "depends",
+   "label": "canonical item IDs"
+  },
+  {
+   "source": "ui",
+   "target": "f_priority",
+   "kind": "depends",
+   "label": "word targets"
+  },
+  {
    "source": "learner",
    "target": "f_personal",
    "kind": "planned",
@@ -1409,6 +1471,18 @@
   }
  ],
  "changelog": [
+  {
+   "date": "2026-10-28",
+   "commit": "working",
+   "title": "Phase 3 draft domain targets and first word, grammar, and phrase-order routes",
+   "blocks": ["f_priority", "f_path", "progress_view", "core", "ui"]
+  },
+  {
+   "date": "2026-10-28",
+   "commit": "working",
+   "title": "Phase 3 starts: milestone choice, personal terms and Azure OpenAI routing",
+   "blocks": ["profiles", "progress_view", "ui", "llm"]
+  },
   {
    "date": "2026-10-25",
    "commit": "plan",

@@ -31,6 +31,7 @@ from .core.progress import (  # noqa: F401
     PastAttempt,
     ProgressRecord,
     SM2MasteryPolicy,
+    replay,
     skill_dimension,
 )
 from .core.language import LanguageToolkit
@@ -377,6 +378,35 @@ class LessonService:
     def now(self) -> datetime:
         return self._clock()
 
+    def _refresh_legacy_progress(self, user_id: int) -> None:
+        """Replay old evidence once per stored item after a policy upgrade."""
+        with Session(self._engine) as session:
+            legacy = session.scalars(select(UserItemProgress).where(
+                UserItemProgress.user_id == user_id,
+                UserItemProgress.policy_version != self.POLICY_VERSION,
+            )).all()
+            for progress in legacy:
+                rows = session.scalars(select(ReviewAttempt).where(
+                    ReviewAttempt.user_id == user_id,
+                    ReviewAttempt.item_id == progress.item_id,
+                    ReviewAttempt.is_graded.is_(True),
+                ).order_by(ReviewAttempt.answered_at, ReviewAttempt.id)).all()
+                answers = tuple(Answer(
+                    question_form=QuestionForm(row.question_form),
+                    skill_dimension=SkillDimension(row.skill_dimension),
+                    lesson_session_id=row.lesson_session_id,
+                    is_correct=row.is_correct,
+                    is_retry=row.is_retry,
+                    confidence=AnswerConfidence(row.answer_confidence),
+                    answered_at=row.answered_at,
+                ) for row in rows)
+                state, _ = replay(self.POLICY, answers)
+                _write_item_state(progress, state)
+                progress.last_answered_at = rows[-1].answered_at if rows else None
+                progress.policy_version = self.POLICY_VERSION
+            if legacy:
+                session.commit()
+
     def _reviewable(self):
         """SQL condition: an item the due review can build a question for."""
 
@@ -473,6 +503,7 @@ class LessonService:
             session.commit()
 
     def get_due_count(self, user_id: int) -> int:
+        self._refresh_legacy_progress(user_id)
         with Session(self._engine) as session:
             count = session.scalar(
                 select(func.count(UserItemProgress.id))
@@ -487,6 +518,7 @@ class LessonService:
             return int(count or 0)
 
     def get_next_review_at(self, user_id: int) -> datetime | None:
+        self._refresh_legacy_progress(user_id)
         with Session(self._engine) as session:
             return session.scalar(
                 select(func.min(UserItemProgress.next_review_at)).where(
@@ -498,6 +530,7 @@ class LessonService:
     def start_due_review(
         self, user_id: int, review_session_id: str | None = None
     ) -> ActiveReview:
+        self._refresh_legacy_progress(user_id)
         session_id = review_session_id or str(uuid4())
         with Session(self._engine) as session:
             rows = session.execute(
@@ -643,6 +676,7 @@ class LessonService:
         idempotency_key = sha256(
             f"{lesson_session_id}:{question.question_id}".encode("utf-8")
         ).hexdigest()
+        self._refresh_legacy_progress(user_id)
         with Session(self._engine) as session:
             existing = session.scalar(
                 select(ReviewAttempt).where(
@@ -707,7 +741,8 @@ class LessonService:
             ).all()
             dimension = skill_dimension(question.form, fixture_item.category)
             history = [
-                PastAttempt(attempt.lesson_session_id, attempt.question_form, attempt.is_correct)
+                PastAttempt(attempt.lesson_session_id, attempt.question_form,
+                            attempt.is_correct, attempt.answered_at)
                 for attempt in historical_attempts
             ]
             answer = Answer(
@@ -792,6 +827,22 @@ class LessonService:
     ) -> CompletionRecord:
         return self.complete_lesson(user_id, self._fixture_active(lesson_session_id))
 
+    def record_practice_completion(self, user_id: int, topic_id: str) -> None:
+        """Store a code-checked local route once, without changing mastery."""
+        with Session(self._engine) as session:
+            existing = session.scalar(select(CompletedLessonMetadata).where(
+                CompletedLessonMetadata.user_id == user_id,
+                CompletedLessonMetadata.topic_id == topic_id,
+            ))
+            if existing is not None:
+                return
+            session.add(CompletedLessonMetadata(
+                user_id=user_id, lesson_session_id=str(uuid4()),
+                topic_id=topic_id, difficulty="Curated practice",
+                studied_item_ids=[], completed_at=self._clock(),
+            ))
+            session.commit()
+
     def complete_lesson(
         self, user_id: int, active_lesson: ActiveLesson
     ) -> CompletionRecord:
@@ -837,6 +888,7 @@ class LessonService:
             return self._completion_record(completion)
 
     def get_progress(self, user_id: int) -> tuple[ProgressRecord, ...]:
+        self._refresh_legacy_progress(user_id)
         with Session(self._engine) as session:
             rows = session.execute(
                 select(UserItemProgress, LearningItem)

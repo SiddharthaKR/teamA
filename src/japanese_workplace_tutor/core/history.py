@@ -75,7 +75,8 @@ def answer_points(
             AnswerPoint(item_id, answer.answered_at, state.mastery_score, after_gap, answer.is_correct)
         )
         history.append(
-            PastAttempt(answer.lesson_session_id, answer.question_form.value, answer.is_correct)
+            PastAttempt(answer.lesson_session_id, answer.question_form.value,
+                        answer.is_correct, answer.answered_at)
         )
         previous = answer.answered_at
     return tuple(points)

@@ -110,6 +110,7 @@ def test_dummy_model_configuration_changes_status_without_provider_call(monkeypa
     prepare_database(monkeypatch, tmp_path / "app.db")
     monkeypatch.setenv("JLT_MODEL_BASE_URL", "https://proxy.invalid/v1")
     monkeypatch.setenv("JLT_MODEL_API_KEY", "dummy-test-value")
+    monkeypatch.setenv("JLT_MODEL_PROVIDER", "openai-compatible")
     monkeypatch.setenv("JLT_PRIMARY_MODEL", "primary-test-model")
     monkeypatch.setenv("JLT_FALLBACK_MODEL", "fallback-test-model")
     get_settings.cache_clear()
@@ -201,14 +202,17 @@ def test_register_logout_and_login_flow(monkeypatch, tmp_path: Path) -> None:
     assert any(title.value == "Set up your learner profile" for title in app.title)
     assert not app.sidebar.radio
 
+    app.selectbox(key="onboarding_1_role").set_value("Software engineer")
     app.button(key="onboarding_1_submit").click().run()
     assert any(title.value == "Home" for title in app.title)
     assert app.session_state["authenticated_username"] == "Alice"
     assert any("Software engineer" in subheader.value for subheader in app.subheader)
 
+    app.session_state["personal_terms_preview"] = ("会議", "word", "A", ())
     app.sidebar.button[0].click().run()
     assert any(title.value == "Demo authentication" for title in app.title)
     assert "authenticated_user_id" not in app.session_state
+    assert "personal_terms_preview" not in app.session_state
 
     app.text_input(key="sign_in_username").input("alice")
     app.text_input(key="sign_in_password").input("correct horse battery staple")
@@ -218,7 +222,7 @@ def test_register_logout_and_login_flow(monkeypatch, tmp_path: Path) -> None:
     assert app.session_state["authenticated_username"] == "Alice"
 
 
-def test_onboarding_validates_tasks_and_profile_can_be_edited(
+def test_short_onboarding_and_profile_can_be_edited(
     monkeypatch, tmp_path: Path
 ) -> None:
     database_path = tmp_path / "app.db"
@@ -229,22 +233,21 @@ def test_onboarding_validates_tasks_and_profile_can_be_edited(
     app.text_input(key="registration_password").input("correct horse battery staple")
     app.button(key="FormSubmitter:registration_form-Create account").click().run()
 
-    app.multiselect(key="onboarding_1_tasks").set_value([])
     app.button(key="onboarding_1_submit").click().run()
-    assert any("at least one typical task" in error.value for error in app.error)
+    assert any("Role or title is required" in error.value for error in app.error)
 
     app.selectbox(key="onboarding_1_role").set_value("Researcher").run()
-    app.multiselect(key="onboarding_1_tasks").set_value(
-        ["Review applications", "Meet inventors"]
-    )
     app.selectbox(key="onboarding_1_declared_level").set_value("JLPT N5")
+    app.selectbox(key="onboarding_1_milestone").set_value("2. Take part")
     app.button(key="onboarding_1_submit").click().run()
 
     assert any(title.value == "Home" for title in app.title)
     assert any("Researcher" in subheader.value for subheader in app.subheader)
 
     app.sidebar.radio[0].set_value("Profile").run()
+    app.multiselect(key="profile_1_tasks").set_value(["Review applications"])
     app.selectbox(key="profile_1_declared_level").set_value("JLPT N3")
+    app.selectbox(key="profile_1_milestone").set_value("3. Contribute")
     app.text_area(key="profile_1_tools_domain").input("Intellectual property")
     app.button(key="profile_1_submit").click().run()
 
@@ -258,7 +261,25 @@ def test_onboarding_validates_tasks_and_profile_can_be_edited(
     ).get_profile(1)
     assert stored is not None
     assert stored.declared_level is JapaneseLevel.N3
+    assert stored.milestone_id == "contribute"
     assert stored.tools_domain == "Intellectual property"
+
+
+def test_personal_terms_require_preview_and_public_confirmation(monkeypatch, tmp_path: Path) -> None:
+    database_path = tmp_path / "app.db"
+    prepare_database(monkeypatch, database_path)
+    user = create_completed_user(database_path)
+    app = AppTest.from_file(str(PROJECT_ROOT / "app.py")).run()
+    app.session_state["authenticated_user_id"] = user.id
+    app.session_state["authenticated_username"] = user.username
+    app.run()
+    app.sidebar.radio[0].set_value("Profile").run()
+    app.text_area(key="personal_terms_paste").input("会議, meeting")
+    app.button(key="preview_personal_terms").click().run(timeout=10)
+    assert app.button(key="save_personal_terms").disabled
+    app.checkbox(key="personal_terms_public").check().run()
+    app.button(key="save_personal_terms").click().run()
+    assert any("1 term" in message.value for message in app.success)
 
 
 def test_fixture_lesson_can_be_answered_completed_and_viewed_in_progress(
@@ -274,6 +295,7 @@ def test_fixture_lesson_can_be_answered_completed_and_viewed_in_progress(
 
     app.sidebar.radio[0].set_value("Learn").run()
     app.button(key="start_fixture_lesson").click().run()
+    app.button(key="go_to_fixture_quiz").click().run()
     active = app.session_state["active_lesson"]
 
     for question in FIXTURE_LESSON.questions:
@@ -343,6 +365,7 @@ def test_generated_lesson_displays_the_llm_provider(monkeypatch, tmp_path: Path)
             ),
         ),
     )
+    app.session_state["quiz_visible"] = False
     app.run()
 
     app.sidebar.radio[0].set_value("Learn").run()
@@ -405,6 +428,26 @@ def test_generated_quiz_stays_hidden_until_go_to_quiz(monkeypatch, tmp_path: Pat
         for caption in app.caption
     )
     assert "active_lesson_draft" not in app.session_state
+    assert not app.get("tab")
+    assert not any("From the lesson:" in caption.value for caption in app.caption)
+
+
+def test_fixture_quiz_hides_study_material(monkeypatch, tmp_path: Path) -> None:
+    database_path = tmp_path / "app.db"
+    prepare_database(monkeypatch, database_path)
+    user = create_completed_user(database_path)
+    app = AppTest.from_file(str(PROJECT_ROOT / "app.py")).run()
+    app.session_state["authenticated_user_id"] = user.id
+    app.session_state["authenticated_username"] = user.username
+    app.run()
+    app.sidebar.radio[0].set_value("Learn").run()
+    app.button(key="start_fixture_lesson").click().run()
+    assert app.get("tab")
+    assert not any(subheader.value == "Practice" for subheader in app.subheader)
+    app.button(key="go_to_fixture_quiz").click().run()
+    assert any(subheader.value == "Practice" for subheader in app.subheader)
+    assert not app.get("tab")
+    assert not any("From the lesson:" in caption.value for caption in app.caption)
 
 
 def test_incorrect_answer_shows_correction_and_requires_varied_retry(
@@ -420,6 +463,7 @@ def test_incorrect_answer_shows_correction_and_requires_varied_retry(
 
     app.sidebar.radio[0].set_value("Learn").run()
     app.button(key="start_fixture_lesson").click().run()
+    app.button(key="go_to_fixture_quiz").click().run()
     active = app.session_state["active_lesson"]
     failed_question = FIXTURE_LESSON.questions[0]
 
@@ -470,6 +514,7 @@ def test_rendered_options_are_shuffled_without_breaking_scoring(
 
     app.sidebar.radio[0].set_value("Learn").run()
     app.button(key="start_fixture_lesson").click().run()
+    app.button(key="go_to_fixture_quiz").click().run()
     active = app.session_state["active_lesson"]
 
     rendered_positions = set()
@@ -590,6 +635,94 @@ def _signed_in_mock_app(monkeypatch, tmp_path: Path) -> AppTest:
     app.session_state["authenticated_username"] = user.username
     app.run()
     return app
+
+
+def test_start_today_opens_the_recommended_situation(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.sidebar.radio[0].set_value("Home").run(timeout=10)
+
+    assert any("Today" in heading.value for heading in app.subheader)
+    app.button(key="start_today").click().run(timeout=10)
+
+    assert not app.exception
+    assert app.sidebar.radio[0].value == "Learn"
+    assert app.text_area(key="lesson_scenario").value == "Greet a new coworker on your first day."
+    assert app.session_state["today_scenario"] == "Greet a new coworker on your first day."
+    assert any("Offline sample" in notice.value for notice in app.info)
+    get_settings.cache_clear()
+
+
+def test_fixture_started_from_today_clears_the_pending_route(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.sidebar.radio[0].set_value("Home").run(timeout=10)
+    app.button(key="start_today").click().run(timeout=10)
+    app.button(key="start_fixture_lesson").click().run(timeout=10)
+
+    assert not app.exception
+    assert "today_route" not in app.session_state
+    assert "today_scenario" not in app.session_state
+    get_settings.cache_clear()
+
+
+def test_today_grammar_practice_completes_in_mock_mode(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.session_state["today_route"] = "path:get-by:grammar"
+    app.sidebar.radio[0].set_value("Learn").run(timeout=10)
+
+    assert not app.exception
+    assert app.radio(key="today_grammar_answer")
+    app.radio(key="today_grammar_answer").set_value("〜てください").run(timeout=10)
+    app.button(key="submit_today_practice").click().run(timeout=10)
+
+    assert not app.exception
+    assert "today_route" not in app.session_state
+    assert any("Practice complete" in notice.value for notice in app.success)
+    get_settings.cache_clear()
+
+
+def test_home_offers_one_offline_practice_alternative(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.sidebar.radio[0].set_value("Home").run(timeout=10)
+
+    assert app.button(key="start_local_practice")
+    app.button(key="start_local_practice").click().run(timeout=10)
+    assert not app.exception
+    assert app.sidebar.radio[0].value == "Learn"
+    assert app.radio(key="today_grammar_answer")
+    get_settings.cache_clear()
+
+
+def test_today_sentence_order_requires_correct_sequence(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    app.session_state["today_route"] = "path:get-by:order"
+    app.sidebar.radio[0].set_value("Learn").run(timeout=10)
+
+    for slot, chunk in enumerate(("疲れ様", "お", "です")):
+        app.selectbox(key=f"today_chunk_{slot}").set_value(chunk).run(timeout=10)
+    app.button(key="submit_today_practice").click().run(timeout=10)
+    assert "today_route" in app.session_state
+
+    for slot, chunk in enumerate(("お", "疲れ様", "です")):
+        app.selectbox(key=f"today_chunk_{slot}").set_value(chunk).run(timeout=10)
+    app.button(key="submit_today_practice").click().run(timeout=10)
+    assert not app.exception
+    assert "today_route" not in app.session_state
+    get_settings.cache_clear()
+
+
+def test_start_today_routes_through_skippable_due_review(monkeypatch, tmp_path: Path) -> None:
+    app = _signed_in_mock_app(monkeypatch, tmp_path)
+    seed_due_item(tmp_path / "app.db", app.session_state["authenticated_user_id"])
+    app.sidebar.radio[0].set_value("Home").run(timeout=10)
+
+    app.button(key="start_today").click().run(timeout=10)
+    assert not app.exception
+    assert "active_due_review" in app.session_state
+    app.button(key="skip_due_review").click().run(timeout=10)
+
+    assert app.sidebar.radio[0].value == "Learn"
+    assert app.text_area(key="lesson_scenario").value == "Greet a new coworker on your first day."
+    get_settings.cache_clear()
 
 
 def test_typed_scenario_needs_public_content_confirmation(monkeypatch, tmp_path: Path) -> None:

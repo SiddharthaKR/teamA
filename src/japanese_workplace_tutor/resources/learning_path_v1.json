@@ -1,0 +1,15 @@
+{
+  "version": "learning-path-v1",
+  "status": "Draft situation routes; human relevance review pending",
+  "steps": [
+    {"id": "get-by:greeting", "milestone_id": "get-by", "title": "Greet a coworker", "scenario": "Greet a new coworker on your first day."},
+    {"id": "get-by:help", "milestone_id": "get-by", "title": "Ask for help", "scenario": "Ask a coworker for help with a simple office task."},
+    {"id": "get-by:attendance", "milestone_id": "get-by", "title": "Explain an absence", "scenario": "Tell your manager that you will be late to work."},
+    {"id": "take-part:meeting", "milestone_id": "take-part", "title": "Join a meeting", "scenario": "Prepare for a routine project meeting."},
+    {"id": "take-part:status", "milestone_id": "take-part", "title": "Give a status update", "scenario": "Give a status update to your manager."},
+    {"id": "take-part:schedule", "milestone_id": "take-part", "title": "Change a schedule", "scenario": "Reschedule a customer call with a coworker."},
+    {"id": "contribute:requirements", "milestone_id": "contribute", "title": "Clarify a requirement", "scenario": "Clarify a project requirement with a coworker."},
+    {"id": "contribute:problem", "milestone_id": "contribute", "title": "Explain a problem", "scenario": "Explain a technical problem and a proposed solution to a client."},
+    {"id": "contribute:findings", "milestone_id": "contribute", "title": "Present findings", "scenario": "Present research findings and answer a question from your team."}
+  ]
+}

@@ -11,8 +11,9 @@ from ..core.inputs import DEFAULT_LINE_COUNT, ScenarioInput, ScenarioMode
 from ..core.items import LessonContent
 from ..core.learner import JapaneseLevel, ProfileRecord
 from ..core.progress import ProgressRecord
+from ..core.priority import RankedTarget
 
-PROMPT_VERSION = "lessons-v1"
+PROMPT_VERSION = "lessons-v2"
 
 
 def dialogue_system_prompt(mode: ScenarioMode, line_count: int) -> str:
@@ -198,6 +199,7 @@ def user_prompt(
     profile: ProfileRecord,
     learning_history: Sequence[ProgressRecord],
     recent_topic_ids: Sequence[str],
+    selected_targets: Sequence[RankedTarget] = (),
 ) -> str:
     profile_data: Mapping[str, object] = {
         "role": profile.role,
@@ -246,6 +248,13 @@ def user_prompt(
             "practical workplace and social situations. Create an actual natural conversation "
             "following the required ten-line, two-speaker format, not a lesson description."
         )
+    target_instruction = (
+        "\nSelected public lesson words (use each naturally in the Japanese dialogue, "
+        "explain it, and mark it as a quiz target): "
+        + json.dumps([{"expression": target.expression, "reason": target.reason}
+                      for target in selected_targets], ensure_ascii=False)
+        if selected_targets and scenario_input.mode is ScenarioMode.GENERATE else ""
+    )
     return (
         task_instruction
         + " The learner's specified JLPT level is the primary and strict difficulty constraint "
@@ -259,6 +268,7 @@ def user_prompt(
         + json.dumps(history_data, ensure_ascii=False)
         + "\nRecent topic IDs: "
         + json.dumps(list(recent_topic_ids[:10]), ensure_ascii=False)
+        + target_instruction
         + "\n<scenario_data>\n"
         + scenario_input.scenario
         + "\n</scenario_data>"

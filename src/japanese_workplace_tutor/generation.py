@@ -29,6 +29,7 @@ from .core.learner import ProfileRecord
 from .core.ports import DataClass, ModelTransport
 from .core.progress import ProgressRecord
 from .features.lessons import LessonGenerator, canonical_item_id
+from .core.priority import RankedTarget
 from .features.presentation import PresentationCoach, evaluate_delivery
 from .features.roleplay import RoleplayCoach, evaluate_graduation
 from .language.sudachi_toolkit import SudachiToolkit
@@ -114,9 +115,10 @@ class LessonGenerationService:
         profile: ProfileRecord,
         learning_history: Sequence[ProgressRecord] = (),
         recent_topic_ids: Sequence[str] = (),
+        selected_targets: Sequence[RankedTarget] = (),
     ) -> GeneratedLessonDraft:
         return self.lessons.generate_lesson_content(
-            scenario, mode, profile, learning_history, recent_topic_ids
+            scenario, mode, profile, learning_history, recent_topic_ids, selected_targets
         )
 
     def generate_quiz(
